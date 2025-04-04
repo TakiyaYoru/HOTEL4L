@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaBed, FaUsers, FaSearch, FaHeart, FaHeartBroken } from 'react-icons/fa';
+import { services } from '../services';
+import { ROOM_TYPES, ROOM_STATUS } from '../services/constants';
 import '../styles/RoomsPage.css';
-import { fetchRooms, fetchRoomTypes } from '../services/api';
 
 function RoomsPage() {
   const [filters, setFilters] = useState({
@@ -24,8 +25,8 @@ function RoomsPage() {
       try {
         setLoading(true);
         const [roomsData, roomTypesData] = await Promise.all([
-          fetchRooms(),
-          fetchRoomTypes()
+          services.api.room.fetchRooms(),
+          services.api.room.fetchRoomTypes()
         ]);
         
         console.log('API Rooms Data:', roomsData);
@@ -39,23 +40,23 @@ function RoomsPage() {
           // Xác định ảnh dựa trên loại phòng
           let imagePath1, imagePath2;
           switch(roomType.rTypeID) {
-            case 'SGL':
+            case ROOM_TYPES.SINGLE:
               imagePath1 = 'Images/Rooms/standard-room-1.jpg';
               imagePath2 = 'Images/Rooms/standard-room-2.jpg';
               break;
-            case 'DBL':
+            case ROOM_TYPES.DOUBLE:
               imagePath1 = 'Images/Rooms/deluxe-room-1.jpg';
               imagePath2 = 'Images/Rooms/deluxe-room-2.jpg';
               break;
-            case 'TWN':
+            case ROOM_TYPES.TWIN:
               imagePath1 = 'Images/Rooms/family-room-1.jpg';
               imagePath2 = 'Images/Rooms/family-room-2.jpg';
               break;
-            case 'KIN':
+            case ROOM_TYPES.KING:
               imagePath1 = 'Images/Rooms/executive-suite-1.jpg';
               imagePath2 = 'Images/Rooms/executive-suite-2.jpg';
               break;
-            case 'FAM':
+            case ROOM_TYPES.FAMILY:
               imagePath1 = 'Images/Rooms/penthouse-suite-1.jpg';
               imagePath2 = 'Images/Rooms/penthouse-suite-2.jpg';
               break;
@@ -74,7 +75,7 @@ function RoomsPage() {
             size: roomType.area,
             status: room.roomStatus,
             roomTypeId: roomType.rTypeID,
-            bed: roomType.rTypeID === 'TWN' ? 'Twin Beds' : 'King Bed',
+            bed: roomType.rTypeID === ROOM_TYPES.TWIN ? 'Twin Beds' : 'King Bed',
             images: [imagePath1, imagePath2],
             description: `Experience luxury and comfort in our ${roomType.typeName.replace('_', ' ')}. This spacious ${roomType.area} sqft room can accommodate up to ${roomType.maxGuests} guests.`
           };
@@ -86,7 +87,7 @@ function RoomsPage() {
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Failed to load rooms. Please try again later.');
+        setError(services.utils.api.handleApiError(err));
         setLoading(false);
       }
     };
@@ -247,7 +248,7 @@ function RoomsPage() {
                 <div className="room-info">
                   <h3 className="room-name">{room.name}</h3>
                   <div className="room-price">
-                    ${room.price}<span>/ night</span>
+                    ${services.utils.format.formatCurrency(room.price)}<span>/ night</span>
                   </div>
                   <div className="room-features">
                     <div>{room.size} sqft</div>

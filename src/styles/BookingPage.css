@@ -88,6 +88,65 @@
   }
 }
 
+/* Step Indicators */
+.step-indicators {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.step-indicators::before {
+  content: '';
+  position: absolute;
+  top: 25px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--border-color);
+  z-index: 1;
+}
+
+.step-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.step-number {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: white;
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+.step-indicator.active .step-number {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.step-label {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  transition: all 0.3s ease;
+}
+
+.step-indicator.active .step-label {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
 /* Form Styles */
 .booking-form-container {
   background-color: white;
@@ -105,6 +164,11 @@
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.section-description {
+  margin-bottom: 20px;
+  color: var(--text-light);
 }
 
 .form-row {
@@ -150,6 +214,40 @@
 .form-group textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+/* Companion Form */
+.companion-form {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  border: 1px solid var(--border-color);
+}
+
+.companion-form h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.no-companions-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: var(--text-light);
+  text-align: center;
+}
+
+.no-companions-message .icon {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  color: var(--primary-color);
+  opacity: 0.5;
 }
 
 /* Payment Methods */
@@ -220,6 +318,9 @@
   cursor: pointer;
   transition: all 0.3s ease;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary {
@@ -238,6 +339,16 @@
 
 .btn-secondary:hover {
   background-color: #e0e0e0;
+}
+
+.btn-primary svg,
+.btn-secondary svg {
+  margin-right: 8px;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
 }
 
 /* Booking Summary */

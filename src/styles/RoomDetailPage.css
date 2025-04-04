@@ -24,6 +24,14 @@
   color: var(--text-light);
 }
 
+/* Style cho Room ID */
+.room-title .room-id {
+  color: var(--text-light);
+  font-size: 0.9rem;
+  margin-top: 5px;
+  font-weight: 500;
+}
+
 .room-price {
   font-size: 1.8rem;
   color: var(--primary-color);

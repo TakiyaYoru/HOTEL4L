@@ -2,15 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { 
-  fetchRooms, 
-  fetchRoomTypes, 
-  createRoom, 
-  updateRoom, 
-  deleteRoom,
-  createRoomType,
-  updateRoomType
-} from '../services/api';
+import { services } from '../services';
 import { 
   FaEdit, 
   FaTrash, 
@@ -402,8 +394,8 @@ function AdminDashboard() {
       try {
         setLoading(true);
         const [roomsData, roomTypesData] = await Promise.all([
-          fetchRooms(),
-          fetchRoomTypes()
+          services.api.room.fetchRooms(),
+          services.api.room.fetchRoomTypes()
         ]);
         
         setRooms(roomsData);
@@ -442,16 +434,16 @@ function AdminDashboard() {
       
       if (editMode.room) {
         // Cập nhật phòng
-        await updateRoom(originalId.roomID, roomFormData);
+        await services.api.room.updateRoom(originalId.roomID, roomFormData);
         alert('Room updated successfully!');
       } else {
         // Tạo phòng mới
-        await createRoom(roomFormData);
+        await services.api.room.createRoom(roomFormData);
         alert('Room created successfully!');
       }
       
       // Refresh danh sách phòng
-      const roomsData = await fetchRooms();
+      const roomsData = await services.api.room.fetchRooms();
       setRooms(roomsData);
       
       // Reset form và edit mode
@@ -479,16 +471,16 @@ function AdminDashboard() {
       
       if (editMode.roomType) {
         // Cập nhật loại phòng
-        await updateRoomType(originalId.rTypeID, roomTypeFormData);
+        await services.api.room.updateRoomType(originalId.rTypeID, roomTypeFormData);
         alert('Room type updated successfully!');
       } else {
         // Tạo loại phòng mới
-        await createRoomType(roomTypeFormData);
+        await services.api.room.createRoomType(roomTypeFormData);
         alert('Room type created successfully!');
       }
       
       // Refresh danh sách loại phòng
-      const roomTypesData = await fetchRoomTypes();
+      const roomTypesData = await services.api.room.fetchRoomTypes();
       setRoomTypes(roomTypesData);
       
       // Reset form và edit mode
@@ -576,10 +568,10 @@ function AdminDashboard() {
         setLoading(true);
         
         // Xóa phòng
-        await deleteRoom(roomId);
+        await services.api.room.deleteRoom(roomId);
         
         // Refresh danh sách phòng
-        const roomsData = await fetchRooms();
+        const roomsData = await services.api.room.fetchRooms();
         setRooms(roomsData);
         
         setLoading(false);
@@ -800,7 +792,7 @@ function AdminDashboard() {
                     </Table>
                     
                     <h3>Add New Room Type</h3>
-                    <Form onSubmit={handleRoomTypeSubmit}>
+                    <Form id="roomTypeForm" onSubmit={handleRoomTypeSubmit}>
                       <FormGroup>
                         <Label htmlFor="rTypeID">Type ID</Label>
                         <Input 

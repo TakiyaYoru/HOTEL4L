@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaCalendarAlt, FaUsers, FaCreditCard, FaMoneyBillWave, FaPaypal, FaUniversity, FaExclamationTriangle, FaSpinner } from 'react-icons/fa';
+import { FaExclamationTriangle, FaSpinner, FaCheck, FaArrowRight, FaArrowLeft, FaCalendarAlt, FaCreditCard, FaInfoCircle } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
-import { createBooking, checkRoomAvailability, createBookingDetail, fetchCustomerByUsername, updateCustomer } from '../services/api';
+import { services } from '../services';
+import { PAYMENT_METHODS, BOOKING_STATUS, PAYMENT_STATUS } from '../services/constants';
 import '../styles/BookingPage.css';
+
+// Import các component con
+import GuestInformationForm from '../components/booking/GuestInformationForm';
+import CompanionsInformationForm from '../components/booking/CompanionsInformationForm';
+import PaymentMethodForm from '../components/booking/PaymentMethodForm';
+import BookingSummary from '../components/booking/BookingSummary';
 
 function BookingPage() {
   const location = useLocation();
@@ -21,10 +28,14 @@ function BookingPage() {
     return storedData ? JSON.parse(storedData) : null;
   });
   
+  // State cho các bước đặt phòng
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 3;
+  
   // Form state
   const [formData, setFormData] = useState({
-    firstName: currentUser?.name?.split(' ')[0] || '',
-    lastName: currentUser?.name?.split(' ')[1] || '',
+    // Thông tin người đặt phòng
+    fullName: currentUser?.name || '',
     email: currentUser?.email || '',
     phone: '',
     address: '',
@@ -32,11 +43,28 @@ function BookingPage() {
     dob: '',
     gender: '',
     specialRequests: '',
-    paymentMethod: 'creditCard',
+    
+    // Thông tin thanh toán
+    paymentMethod: '', // Không đặt mặc định để người dùng phải chọn
     cardNumber: '',
     cardName: '',
     expiryDate: '',
-    cvv: ''
+    cvv: '',
+    useSavedCard: true, // Sử dụng thẻ đã lưu (nếu có)
+    transferConfirmed: false, // Xác nhận đã chuyển khoản
+    saveCard: true, // Lưu thẻ mới
+    
+    // Thời gian check-in/check-out
+    checkInTime: '14:00',
+    checkOutTime: '12:00',
+    
+    // Thông tin người đi cùng
+    companions: Array(bookingData?.guests > 1 ? bookingData.guests - 1 : 0).fill().map(() => ({
+      fullName: '',
+      idCard: '',
+      dob: '',
+      gender: ''
+    }))
   });
 
   // State cho loading và error
@@ -44,6 +72,10 @@ function BookingPage() {
   const [error, setError] = useState(null);
   const [isRoomAvailable, setIsRoomAvailable] = useState(true);
   const [success, setSuccess] = useState(false);
+  
+  // State cho thông tin thẻ thanh toán
+  const [hasPaymentCard, setHasPaymentCard] = useState(false);
+  const [paymentCardInfo, setPaymentCardInfo] = useState(null);
   
   // Nếu không có dữ liệu đặt phòng, chuyển hướng về trang phòng
   useEffect(() => {
@@ -66,22 +98,21 @@ function BookingPage() {
         try {
           setLoading(true);
           
-          const checkInDate = bookingData.checkInDate instanceof Date 
-            ? bookingData.checkInDate.toISOString().split('T')[0] 
-            : bookingData.checkInDate;
-          
-          const checkOutDate = bookingData.checkOutDate instanceof Date 
-            ? bookingData.checkOutDate.toISOString().split('T')[0] 
-            : bookingData.checkOutDate;
+          const checkInDate = services.utils.format.formatDateForApi(bookingData.checkInDate);
+          const checkOutDate = services.utils.format.formatDateForApi(bookingData.checkOutDate);
           
           // Gọi API để kiểm tra phòng có sẵn không
-          const availability = await checkRoomAvailability(bookingData.roomId, checkInDate, checkOutDate);
+          const availability = await services.api.room.checkRoomAvailability(
+            bookingData.roomId,
+            checkInDate,
+            checkOutDate
+          );
           setIsRoomAvailable(availability.isAvailable);
           
           setLoading(false);
         } catch (err) {
           console.error('Error checking room availability:', err);
-          setError('Failed to check room availability. Please try again.');
+          setError(services.utils.api.handleApiError(err));
           setIsRoomAvailable(true);
           setLoading(false);
         }
@@ -90,6 +121,89 @@ function BookingPage() {
     
     checkAvailability();
   }, [bookingData]);
+  
+  // Lấy thông tin thẻ thanh toán của người dùng
+  useEffect(() => {
+    const fetchPaymentCardInfo = async () => {
+      if (currentUser && currentStep === 3) {
+        try {
+          const customerID = currentUser.id || currentUser.username;
+          
+          // Kiểm tra xem customer có payment card không
+          const { hasPaymentCard, pan } = await services.api.payment.checkCustomerPaymentCard(customerID);
+          setHasPaymentCard(hasPaymentCard);
+          
+          if (hasPaymentCard && pan) {
+            // Lấy thông tin thẻ
+            const paymentCard = await services.api.payment.fetchPaymentCardByPAN(pan);
+            setPaymentCardInfo(paymentCard);
+          }
+        } catch (error) {
+          console.error('Error fetching payment card info:', error);
+          setHasPaymentCard(false);
+          setPaymentCardInfo(null);
+        }
+      }
+    };
+    
+    fetchPaymentCardInfo();
+  }, [currentUser, currentStep]);
+
+  // Validate form data
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.fullName.trim()) {
+      errors.fullName = 'Full name is required';
+    }
+
+    if (!services.utils.validation.validateEmail(formData.email)) {
+      errors.email = 'Invalid email address';
+    }
+
+    if (!services.utils.validation.validatePhone(formData.phone)) {
+      errors.phone = 'Invalid phone number format (XXX-XXXX-XXXXX)';
+    }
+
+    if (!services.utils.validation.validateIdCard(formData.idCard)) {
+      errors.idCard = 'Invalid ID card number';
+    }
+
+    // Validate companions data if there are any and only if we're on step 2 or submitting the form
+    if (currentStep === 2 && formData.companions.length > 0) {
+      const companionErrors = formData.companions.map((companion, index) => {
+        const errors = {};
+        if (!companion.fullName.trim()) {
+          errors.fullName = `Yêu cầu nhập tên đầy đủ của người bạn đồng hành ${index + 1}`;
+        }
+        if (!companion.idCard.trim()) {
+          errors.idCard = `Yêu cầu nhập thẻ căn cước của người bạn đồng hành ${index + 1}`;
+        }
+        if (!companion.dob) {
+          errors.dob = `Yêu cầu nhập ngày sinh của người bạn đồng hành ${index + 1}`;
+        }
+        if (!companion.gender) {
+          errors.gender = `Yêu cầu nhập giới tính của người bạn đồng hành ${index + 1}`;
+        }
+        return Object.keys(errors).length > 0 ? errors : null;
+      }).filter(Boolean);
+      
+      if (companionErrors.length > 0) {
+        errors.companions = companionErrors;
+      }
+    }
+
+    if (currentStep === 3 && formData.paymentMethod === PAYMENT_METHODS.CREDIT_CARD) {
+      if (!formData.cardNumber || !formData.cardName || !formData.expiryDate || !formData.cvv) {
+        errors.payment = 'All card details are required';
+      }
+    }
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    };
+  };
   
   if (!bookingData) {
     return <div className="container">Loading...</div>;
@@ -103,6 +217,125 @@ function BookingPage() {
     });
   };
   
+  const handleCompanionChange = (index, field, value) => {
+    const updatedCompanions = [...formData.companions];
+    updatedCompanions[index] = {
+      ...updatedCompanions[index],
+      [field]: value
+    };
+    
+    setFormData({
+      ...formData,
+      companions: updatedCompanions
+    });
+  };
+  
+  const handleNextStep = () => {
+    // Validate current step
+    const validation = validateForm();
+    if (!validation.isValid) {
+      // Đảm bảo error luôn là một chuỗi
+      const firstError = Object.values(validation.errors)[0];
+      setError(typeof firstError === 'string' ? firstError : JSON.stringify(firstError));
+      return;
+    }
+    
+    setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    setError(null);
+  };
+  
+  const handlePrevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setError(null);
+  };
+  
+  // Kiểm tra xem phương thức thanh toán có hợp lệ không
+  const validatePaymentMethod = () => {
+    // Chỉ kiểm tra khi đang ở bước thanh toán (bước 3)
+    if (currentStep !== 3) {
+      return true;
+    }
+    
+    // Kiểm tra xem người dùng đã chọn phương thức thanh toán chưa
+    if (!formData.paymentMethod) {
+      setError('Please select a payment method');
+      return false;
+    }
+    
+    // Nếu là thẻ tín dụng, kiểm tra thông tin thẻ
+    if (formData.paymentMethod === PAYMENT_METHODS.CREDIT_CARD) {
+      // Nếu sử dụng thẻ đã lưu, không cần kiểm tra thông tin thẻ
+      if (hasPaymentCard && paymentCardInfo && formData.useSavedCard) {
+        return true;
+      }
+      
+      // Nếu không sử dụng thẻ đã lưu, kiểm tra thông tin thẻ
+      if (!formData.cardNumber || !formData.cardName || !formData.expiryDate || !formData.cvv) {
+        setError('Please enter all card details');
+        return false;
+      }
+    }
+    
+    // Nếu là chuyển khoản, kiểm tra xác nhận đã chuyển khoản
+    if (formData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER && !formData.transferConfirmed) {
+      setError('Please confirm that you have completed the bank transfer');
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Kiểm tra xem form có sẵn sàng để submit không
+  const isFormReadyToSubmit = () => {
+    // Nếu chưa ở bước cuối cùng, không cho phép submit
+    if (currentStep < totalSteps) {
+      return false;
+    }
+    
+    // Validate form - Khi submit, cần kiểm tra tất cả các thông tin
+    // Lưu trữ currentStep hiện tại
+    const originalStep = currentStep;
+    
+    // Tạm thời đặt currentStep = 2 để kiểm tra thông tin người đồng hành
+    let isValid = true;
+    let errorMessage = '';
+    
+    if (formData.companions.length > 0) {
+      setCurrentStep(2);
+      const companionValidation = validateForm();
+      // Khôi phục currentStep
+      setCurrentStep(originalStep);
+      
+      if (!companionValidation.isValid) {
+        // Đảm bảo error luôn là một chuỗi
+        const firstError = Object.values(companionValidation.errors)[0];
+        errorMessage = typeof firstError === 'string' ? firstError : JSON.stringify(firstError);
+        isValid = false;
+      }
+    }
+    
+    // Kiểm tra thông tin thanh toán
+    const validation = validateForm();
+    if (!validation.isValid) {
+      // Đảm bảo error luôn là một chuỗi
+      const firstError = Object.values(validation.errors)[0];
+      errorMessage = typeof firstError === 'string' ? firstError : JSON.stringify(firstError);
+      isValid = false;
+    }
+    
+    // Kiểm tra phương thức thanh toán
+    if (!validatePaymentMethod()) {
+      errorMessage = 'Please complete payment information';
+      isValid = false;
+    }
+    
+    if (!isValid) {
+      setError(errorMessage);
+    }
+    
+    return isValid;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -110,20 +343,20 @@ function BookingPage() {
       setError('This room is no longer available for the selected dates. Please choose different dates or another room.');
       return;
     }
+
+    // Kiểm tra xem form có sẵn sàng để submit không
+    if (!isFormReadyToSubmit()) {
+      return;
+    }
     
     setLoading(true);
     setError(null);
-    setSuccess(False);
+    setSuccess(false);
     
     try {
-      // Chuẩn bị dữ liệu đặt phòng
-      const checkInDate = bookingData.checkInDate instanceof Date 
-        ? bookingData.checkInDate.toISOString().split('T')[0] 
-        : bookingData.checkInDate;
-      
-      const checkOutDate = bookingData.checkOutDate instanceof Date 
-        ? bookingData.checkOutDate.toISOString().split('T')[0] 
-        : bookingData.checkOutDate;
+      // Format dates
+      const checkInDate = services.utils.format.formatDateForApi(bookingData.checkInDate);
+      const checkOutDate = services.utils.format.formatDateForApi(bookingData.checkOutDate);
       
       // Bước 1: Cập nhật thông tin khách hàng
       const customerID = currentUser?.id || currentUser?.username;
@@ -132,24 +365,24 @@ function BookingPage() {
       let customerData = null;
       try {
         // Lấy thông tin khách hàng hiện tại
-        customerData = await fetchCustomerByUsername(customerID);
+        customerData = await services.api.customer.fetchCustomerByUsername(customerID);
         console.log('Fetched customer data:', customerData);
         
         if (customerData) {
           // Cập nhật thông tin khách hàng với dữ liệu mới từ form
           const updatedCustomerData = {
             ...customerData,
-            cName: `${formData.firstName} ${formData.lastName}`,
+            cName: formData.fullName,
             gender: formData.gender,
             email: formData.email,
-            dob: formData.dob ? new Date(formData.dob).toISOString() : customerData.dob,
+            dob: formData.dob ? services.utils.format.formatDateForApi(formData.dob) : customerData.dob,
             phone: formData.phone,
             address: formData.address,
             idCard: formData.idCard
           };
           
           console.log('Updating customer with data:', JSON.stringify(updatedCustomerData, null, 2));
-          const updatedCustomer = await updateCustomer(customerID, updatedCustomerData);
+          const updatedCustomer = await services.api.customer.updateCustomer(customerID, updatedCustomerData);
           console.log('Customer information updated successfully:', updatedCustomer);
         }
       } catch (error) {
@@ -159,22 +392,26 @@ function BookingPage() {
       
       // Bước 2: Tạo booking mới
       // Tạo ID cho booking
-      const bookingID = 'BOOK' + Date.now().toString().slice(-8);
-      const paymentID = 'PAY' + Date.now().toString().slice(-8);
+      const timestamp = Date.now().toString().slice(-8);
+      const bookingID = 'BOOK' + timestamp;
       
-      // Tạo dữ liệu booking theo cấu trúc API
+      // Khởi tạo biến cho payment
+      let paymentID = null;
+      let paymentStatus = false;
+      let paymentData = null;
+      
+      // Tạo dữ liệu booking theo cấu trúc API (không có paymentID ban đầu)
       const bookingPayload = {
         bookingID: bookingID,
         bookingTime: new Date().toISOString(),
         totalAmount: bookingData.total,
-        bookingStatus: "Confirmed",
-        paymentStatus: formData.paymentMethod === 'cash' ? false : true,
-        paymentID: formData.paymentMethod !== 'cash' ? paymentID : null,
+        bookingStatus: BOOKING_STATUS.CONFIRMED,
+        paymentStatus: false, // Luôn đặt false ban đầu
+        paymentID: null, // Luôn đặt null ban đầu
         customerID: customerID,
         employeeID: "emp000001", // Sử dụng employeeID mặc định theo yêu cầu
         paymentMethod: formData.paymentMethod,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
@@ -182,23 +419,12 @@ function BookingPage() {
         dob: formData.dob,
         gender: formData.gender,
         cardNumber: formData.cardNumber,
-        payment: formData.paymentMethod !== 'cash' ? {
-          paymentID: paymentID,
-          paymentTime: new Date().toISOString(),
-          method: getPaymentMethodName(formData.paymentMethod),
-          details: "Online payment",
-          totalAmount: bookingData.total,
-          pan: formData.paymentMethod === 'creditCard' ? formData.cardNumber.replace(/\s/g, '') : null,
-          bookingID: bookingID,
-          paymentCard: null,
-          booking: null
-        } : null,
         customer: customerData || {
           customerID: customerID,
-          cName: `${formData.firstName} ${formData.lastName}`,
+          cName: formData.fullName,
           gender: formData.gender || "Unknown",
           email: formData.email || currentUser?.email || "guest@example.com",
-          dob: formData.dob ? new Date(formData.dob).toISOString() : "1990-01-01T00:00:00",
+          dob: formData.dob ? services.utils.format.formatDateForApi(formData.dob) : "1990-01-01T00:00:00",
           phone: formData.phone || "000-000-0000",
           address: formData.address || "Unknown",
           idCard: formData.idCard || "000000000000",
@@ -225,8 +451,132 @@ function BookingPage() {
       console.log('Booking payload:', JSON.stringify(bookingPayload, null, 2));
       
       // Gọi API để tạo booking
-      const createdBooking = await createBooking(bookingPayload);
+      const createdBooking = await services.api.booking.createBooking(bookingPayload);
       console.log('Booking created successfully:', createdBooking);
+      
+      // Xử lý thanh toán dựa trên phương thức thanh toán sau khi booking đã được tạo
+      if (formData.paymentMethod === PAYMENT_METHODS.CREDIT_CARD || 
+          formData.paymentMethod === PAYMENT_METHODS.PAYPAL) {
+        
+        try {
+          // Nếu người dùng chọn sử dụng thẻ đã lưu
+          if (hasPaymentCard && paymentCardInfo && formData.useSavedCard) {
+            console.log('Using saved payment card:', paymentCardInfo.pan);
+            
+            // Xác thực thanh toán
+            const verification = await services.api.payment.verifyPayment({
+              amount: bookingData.total,
+              pan: paymentCardInfo.pan,
+              method: formData.paymentMethod
+            });
+            
+            if (verification.success) {
+              // Tạo payment
+              paymentID = 'PAY' + Date.now().toString().slice(-8);
+              paymentData = await services.api.payment.createPayment({
+                paymentID: paymentID,
+                paymentMethod: formData.paymentMethod,
+                totalAmount: bookingData.total,
+                bookingID: createdBooking.bookingID,
+                description: `Payment for booking ${createdBooking.bookingID}`
+              });
+              
+              paymentStatus = true;
+            }
+          } 
+          // Nếu người dùng nhập thẻ mới
+          else if (formData.cardNumber && formData.cardName && formData.expiryDate && formData.cvv) {
+            console.log('Using new payment card');
+            
+            // Xác thực thanh toán
+            const verification = await services.api.payment.verifyPayment({
+              amount: bookingData.total,
+              cardNumber: formData.cardNumber,
+              cardName: formData.cardName,
+              expiryDate: formData.expiryDate,
+              cvv: formData.cvv,
+              method: formData.paymentMethod
+            });
+            
+            if (verification.success) {
+              // Nếu người dùng muốn lưu thẻ
+              if (formData.saveCard) {
+                try {
+                  // Thêm thẻ mới
+                  const [month, year] = formData.expiryDate.split('/');
+                  await services.api.payment.addPaymentCard({
+                    cardNumber: formData.cardNumber,
+                    cardHolder: formData.cardName,
+                    expiryMonth: month,
+                    expiryYear: '20' + year,
+                    bank: 'Unknown'
+                  });
+                  
+                  // Cập nhật PAN cho customer
+                  if (customerData) {
+                    await services.api.customer.updateCustomer(customerID, {
+                      ...customerData,
+                      pan: formData.cardNumber.replace(/\s/g, '')
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error saving payment card:', error);
+                  // Tiếp tục quá trình đặt phòng ngay cả khi không thể lưu thẻ
+                }
+              }
+              
+              // Tạo payment
+              paymentID = 'PAY' + Date.now().toString().slice(-8);
+              paymentData = await services.api.payment.createPayment({
+                paymentID: paymentID,
+                paymentMethod: formData.paymentMethod,
+                totalAmount: bookingData.total,
+                bookingID: createdBooking.bookingID,
+                description: `Payment for booking ${createdBooking.bookingID}`
+              });
+              
+              paymentStatus = true;
+            }
+          }
+        } catch (error) {
+          console.error('Error processing payment:', error);
+          // Tiếp tục quá trình đặt phòng ngay cả khi không thể xử lý thanh toán
+        }
+      } 
+      // Xử lý chuyển khoản ngân hàng
+      else if (formData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER && formData.transferConfirmed) {
+        try {
+          // Tạo payment
+          paymentID = 'PAY' + Date.now().toString().slice(-8);
+          paymentData = await services.api.payment.createPayment({
+            paymentID: paymentID,
+            paymentMethod: formData.paymentMethod,
+            totalAmount: bookingData.total,
+            bookingID: createdBooking.bookingID,
+            description: `Bank transfer for booking ${createdBooking.bookingID}`
+          });
+          
+          paymentStatus = true;
+        } catch (error) {
+          console.error('Error processing bank transfer:', error);
+          // Tiếp tục quá trình đặt phòng ngay cả khi không thể xử lý thanh toán
+        }
+      }
+      
+      // Nếu payment đã được tạo, cập nhật booking với paymentID
+      if (paymentID && paymentStatus) {
+        try {
+          // Cập nhật booking với paymentID
+          await services.api.booking.updateBooking(createdBooking.bookingID, {
+            ...createdBooking,
+            paymentID: paymentID,
+            paymentStatus: paymentStatus
+          });
+          console.log('Booking updated with payment information');
+        } catch (error) {
+          console.error('Error updating booking with payment information:', error);
+        }
+      }
       
       // Bước 3: Tạo booking detail
       // Tạo ID cho booking detail
@@ -235,28 +585,43 @@ function BookingPage() {
       // Tạo dữ liệu booking detail theo cấu trúc API
       const bookingDetailPayload = {
         detailID: detailID,
-        checkinDate: checkInDate + "T14:00:00", // Thêm thời gian check-in mặc định (2PM)
-        checkoutDate: checkOutDate + "T12:00:00", // Thêm thời gian check-out mặc định (12PM)
+        checkinDate: new Date(bookingData.checkInDate),
+        checkoutDate: new Date(bookingData.checkOutDate),
         detailStatus: "Booked",
         pricePerDay: bookingData.price,
         totalPrice: bookingData.total,
         bookingID: createdBooking.bookingID || bookingID,
         roomID: bookingData.roomId,
-        // Tạo guest_BDetails theo số lượng khách
-        guest_BDetails: Array.from({ length: bookingData.guests }, (_, index) => ({
-          detailID: detailID,
-          guestID: `GUEST${Date.now().toString().slice(-4)}_${index}`,
-          guestInfo: index === 0 ? {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            idCard: formData.idCard,
-            dob: formData.dob,
-            gender: formData.gender
-          } : null
-        })),
+        // Tạo guest_BDetails cho người đặt phòng và người đi cùng
+        guest_BDetails: [
+          // Thông tin người đặt phòng
+          {
+            detailID: detailID,
+            guestID: `GUEST${Date.now().toString().slice(-4)}_0`,
+            guestInfo: {
+              fullName: formData.fullName,
+              email: formData.email,
+              phone: formData.phone,
+              address: formData.address,
+              idCard: formData.idCard,
+              dob: formData.dob,
+              gender: formData.gender,
+              isPrimary: true
+            }
+          },
+          // Thông tin người đi cùng
+          ...formData.companions.map((companion, index) => ({
+            detailID: detailID,
+            guestID: `GUEST${Date.now().toString().slice(-4)}_${index + 1}`,
+            guestInfo: {
+              fullName: companion.fullName,
+              idCard: companion.idCard,
+              dob: companion.dob,
+              gender: companion.gender,
+              isPrimary: false
+            }
+          }))
+        ],
         // Thêm dịch vụ bổ sung nếu có
         eService_BDetails: bookingData.extraServices ? bookingData.extraServices.map(service => ({
           detailID: detailID,
@@ -270,7 +635,7 @@ function BookingPage() {
       console.log('Booking detail payload:', JSON.stringify(bookingDetailPayload, null, 2));
       
       // Gọi API để tạo booking detail
-      const createdBookingDetail = await createBookingDetail(bookingDetailPayload);
+      const createdBookingDetail = await services.api.booking.createBookingDetail(bookingDetailPayload);
       console.log('Booking detail created successfully:', createdBookingDetail);
       
       // Chuẩn bị dữ liệu đặt phòng để hiển thị trong trang checkout
@@ -279,18 +644,19 @@ function BookingPage() {
         roomId: bookingData.roomId,
         roomName: bookingData.roomName,
         checkInDate: checkInDate,
+        checkInTime: formData.checkInTime,
         checkOutDate: checkOutDate,
+        checkOutTime: formData.checkOutTime,
         guests: bookingData.guests,
         price: bookingData.price,
         total: bookingData.total,
-        status: 'confirmed',
+        status: BOOKING_STATUS.CONFIRMED.toLowerCase(),
         roomImage: bookingData.roomImage,
-        bookingDate: new Date().toISOString().split('T')[0],
-        paymentMethod: getPaymentMethodName(formData.paymentMethod),
+        bookingDate: services.utils.format.formatDateForApi(new Date()),
+        paymentMethod: formData.paymentMethod,
         specialRequests: formData.specialRequests,
-        guestInfo: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+        primaryGuest: {
+          fullName: formData.fullName,
           email: formData.email,
           phone: formData.phone,
           address: formData.address,
@@ -298,9 +664,18 @@ function BookingPage() {
           dob: formData.dob,
           gender: formData.gender
         },
+        companions: formData.companions,
         timeline: [
-          { date: new Date().toISOString().split('T')[0], text: 'Booking created', icon: 'FaCalendarAlt' },
-          { date: new Date().toISOString().split('T')[0], text: formData.paymentMethod === 'cash' ? 'Payment pending' : 'Payment confirmed', icon: 'FaCreditCard' }
+          { 
+            date: services.utils.format.formatDateForApi(new Date()), 
+            text: 'Booking created', 
+            icon: 'FaCalendarAlt' 
+          },
+          { 
+            date: services.utils.format.formatDateForApi(new Date()), 
+            text: formData.paymentMethod === PAYMENT_METHODS.CASH ? 'Payment pending' : 'Payment confirmed', 
+            icon: 'FaCreditCard' 
+          }
         ]
       };
       
@@ -313,31 +688,52 @@ function BookingPage() {
       navigate('/checkout', { state: { booking: bookingForCheckout } });
     } catch (err) {
       console.error('Error creating booking:', err);
-      setError('Failed to create booking. Please try again.');
+      setError(services.utils.api.handleApiError(err));
       setLoading(false);
     }
   };
   
-  // Lấy tên phương thức thanh toán
-  const getPaymentMethodName = (method) => {
-    switch (method) {
-      case 'creditCard':
-        return 'Credit Card';
-      case 'paypal':
-        return 'PayPal';
-      case 'bankTransfer':
-        return 'Bank Transfer';
-      case 'cash':
-        return 'Cash';
-      default:
-        return 'Credit Card';
-    }
+  // Render step indicators
+  const renderStepIndicators = () => {
+    return (
+      <div className="step-indicators">
+        {Array.from({ length: totalSteps }, (_, i) => (
+          <div 
+            key={i} 
+            className={`step-indicator ${currentStep >= i + 1 ? 'active' : ''}`}
+            onClick={() => currentStep > i + 1 && setCurrentStep(i + 1)}
+          >
+            <div className="step-number">{i + 1}</div>
+            <div className="step-label">
+              {i === 0 ? 'Guest Information' : i === 1 ? 'Companions' : 'Payment'}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
   
-  // Format ngày
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+  // Render step content
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return <GuestInformationForm formData={formData} handleInputChange={handleInputChange} />;
+      case 2:
+        return <CompanionsInformationForm 
+          bookingData={bookingData} 
+          formData={formData} 
+          handleCompanionChange={handleCompanionChange} 
+        />;
+      case 3:
+        return <PaymentMethodForm 
+          formData={formData} 
+          handleInputChange={handleInputChange} 
+          hasPaymentCard={hasPaymentCard}
+          paymentCardInfo={paymentCardInfo}
+        />;
+      default:
+        return <GuestInformationForm formData={formData} handleInputChange={handleInputChange} />;
+    }
   };
   
   return (
@@ -351,362 +747,64 @@ function BookingPage() {
         <div className="booking-content">
           <div className="booking-form-container">
             <form className="booking-form" onSubmit={handleSubmit}>
-              <div className="form-section">
-                <h2>Guest Information</h2>
-                
-                {error && (
-                  <div className="error-message">
-                    <FaExclamationTriangle /> {error}
-                  </div>
-                )}
-                
-                {success && (
-                  <div className="success-message">
-                    <FaCheck /> Booking created successfully!
-                  </div>
-                )}
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="firstName">First Name*</label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="lastName">Last Name*</label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="email">Email*</label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="phone">Phone*</label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="idCard">ID Card/Passport*</label>
-                    <input
-                      type="text"
-                      id="idCard"
-                      name="idCard"
-                      value={formData.idCard}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Enter your ID card or passport number"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="dob">Date of Birth*</label>
-                    <input
-                      type="date"
-                      id="dob"
-                      name="dob"
-                      value={formData.dob}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="gender">Gender*</label>
-                    <select
-                      id="gender"
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="address">Address*</label>
-                    <input
-                      type="text"
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Enter your full address"
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="specialRequests">Special Requests (Optional)</label>
-                  <textarea
-                    id="specialRequests"
-                    name="specialRequests"
-                    value={formData.specialRequests}
-                    onChange={handleInputChange}
-                    rows="3"
-                    placeholder="Any special requests or preferences for your stay"
-                  ></textarea>
-                </div>
-              </div>
+              {renderStepIndicators()}
               
-              <div className="form-section">
-                <h2>Payment Method</h2>
-                
-                <div className="payment-methods">
-                  <div className="payment-method">
-                    <input
-                      type="radio"
-                      id="creditCard"
-                      name="paymentMethod"
-                      value="creditCard"
-                      checked={formData.paymentMethod === 'creditCard'}
-                      onChange={handleInputChange}
-                    />
-                    <label htmlFor="creditCard">
-                      <FaCreditCard />
-                      <span>Credit Card</span>
-                    </label>
-                  </div>
-                  
-                  <div className="payment-method">
-                    <input
-                      type="radio"
-                      id="paypal"
-                      name="paymentMethod"
-                      value="paypal"
-                      checked={formData.paymentMethod === 'paypal'}
-                      onChange={handleInputChange}
-                    />
-                    <label htmlFor="paypal">
-                      <FaPaypal />
-                      <span>PayPal</span>
-                    </label>
-                  </div>
-                  
-                  <div className="payment-method">
-                    <input
-                      type="radio"
-                      id="bankTransfer"
-                      name="paymentMethod"
-                      value="bankTransfer"
-                      checked={formData.paymentMethod === 'bankTransfer'}
-                      onChange={handleInputChange}
-                    />
-                    <label htmlFor="bankTransfer">
-                      <FaUniversity />
-                      <span>Bank Transfer</span>
-                    </label>
-                  </div>
-                  
-                  <div className="payment-method">
-                    <input
-                      type="radio"
-                      id="cash"
-                      name="paymentMethod"
-                      value="cash"
-                      checked={formData.paymentMethod === 'cash'}
-                      onChange={handleInputChange}
-                    />
-                    <label htmlFor="cash">
-                      <FaMoneyBillWave />
-                      <span>Cash on Arrival</span>
-                    </label>
-                  </div>
+              {error && (
+                <div className="error-message">
+                  <FaExclamationTriangle /> {error}
                 </div>
-                
-                {formData.paymentMethod === 'creditCard' && (
-                  <div className="credit-card-form">
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="cardNumber">Card Number</label>
-                        <input
-                          type="text"
-                          id="cardNumber"
-                          name="cardNumber"
-                          value={formData.cardNumber}
-                          onChange={handleInputChange}
-                          placeholder="1234 5678 9012 3456"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="cardName">Name on Card</label>
-                        <input
-                          type="text"
-                          id="cardName"
-                          name="cardName"
-                          value={formData.cardName}
-                          onChange={handleInputChange}
-                          placeholder="John Doe"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="expiryDate">Expiry Date</label>
-                        <input
-                          type="text"
-                          id="expiryDate"
-                          name="expiryDate"
-                          value={formData.expiryDate}
-                          onChange={handleInputChange}
-                          placeholder="MM/YY"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="form-group">
-                        <label htmlFor="cvv">CVV</label>
-                        <input
-                          type="text"
-                          id="cvv"
-                          name="cvv"
-                          value={formData.cvv}
-                          onChange={handleInputChange}
-                          placeholder="123"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
+              
+              {success && (
+                <div className="success-message">
+                  <FaCheck /> Booking created successfully!
+                </div>
+              )}
+              
+              {renderStepContent()}
               
               <div className="form-actions">
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
-                  onClick={() => navigate(-1)}
-                  disabled={loading}
-                >
-                  Back
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-primary"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <FaSpinner className="loading-spinner" />
-                      Processing...
-                    </>
-                  ) : (
-                    'Complete Booking'
-                  )}
-                </button>
+                {currentStep > 1 && (
+                  <button 
+                    type="button" 
+                    className="btn-secondary" 
+                    onClick={handlePrevStep}
+                    disabled={loading}
+                  >
+                    <FaArrowLeft /> Back
+                  </button>
+                )}
+                
+                {currentStep < totalSteps ? (
+                  <button 
+                    type="button" 
+                    className="btn-primary"
+                    onClick={handleNextStep}
+                    disabled={loading}
+                  >
+                    Next <FaArrowRight />
+                  </button>
+                ) : (
+                  <button 
+                    type="submit" 
+                    className="btn-primary"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <FaSpinner className="loading-spinner" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Complete Booking'
+                    )}
+                  </button>
+                )}
               </div>
             </form>
           </div>
           
-          <div className="booking-summary">
-            <div className="summary-card">
-              <h2>Booking Summary</h2>
-              
-              <div className="summary-image" style={{ backgroundImage: `url(${bookingData.roomImage})` }}></div>
-              
-              <div className="summary-details">
-                <h3>{bookingData.roomName}</h3>
-                
-                <div className="summary-item">
-                  <div className="summary-icon">
-                    <FaCalendarAlt />
-                  </div>
-                  <div className="summary-text">
-                    <span className="summary-label">Check-in</span>
-                    <span>{formatDate(bookingData.checkInDate)}</span>
-                  </div>
-                </div>
-                
-                <div className="summary-item">
-                  <div className="summary-icon">
-                    <FaCalendarAlt />
-                  </div>
-                  <div className="summary-text">
-                    <span className="summary-label">Check-out</span>
-                    <span>{formatDate(bookingData.checkOutDate)}</span>
-                  </div>
-                </div>
-                
-                <div className="summary-item">
-                  <div className="summary-icon">
-                    <FaUsers />
-                  </div>
-                  <div className="summary-text">
-                    <span className="summary-label">Guests</span>
-                    <span>{bookingData.guests}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="summary-pricing">
-                <div className="price-item">
-                  <span>Room Rate</span>
-                  <span>${bookingData.price} x {bookingData.nights} nights</span>
-                </div>
-                
-                <div className="price-item">
-                  <span>Room Total</span>
-                  <span>${bookingData.price * bookingData.nights}</span>
-                </div>
-                
-                <div className="price-item">
-                  <span>Tax (10%)</span>
-                  <span>${(bookingData.price * bookingData.nights * 0.1).toFixed(2)}</span>
-                </div>
-                
-                <div className="price-total">
-                  <span>Total</span>
-                  <span>${bookingData.total.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <BookingSummary bookingData={bookingData} />
         </div>
       </div>
     </div>

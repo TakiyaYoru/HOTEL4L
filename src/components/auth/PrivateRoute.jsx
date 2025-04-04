@@ -1,5 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { USER_ROLES } from '../../services/constants';
+
+// Các đường dẫn yêu cầu đăng nhập qua modal
+const MODAL_AUTH_PATHS = {
+  BOOKING: '/booking',
+  FAVORITES: '/favorites',
+  MY_BOOKINGS: '/my-bookings'
+};
 
 function PrivateRoute({ children, roles }) {
   const { currentUser, openLoginModal } = useAuth();
@@ -8,7 +16,7 @@ function PrivateRoute({ children, roles }) {
   // Nếu người dùng chưa đăng nhập
   if (!currentUser) {
     // Mở modal đăng nhập nếu đang ở trang đặt phòng, trang yêu thích hoặc trang đặt phòng của tôi
-    if (location.pathname === "/booking" || location.pathname === "/favorites" || location.pathname === "/my-bookings") {
+    if (Object.values(MODAL_AUTH_PATHS).includes(location.pathname)) {
       openLoginModal(location.pathname);
       return null; // Không render gì cả, modal sẽ được hiển thị
     }
@@ -20,7 +28,7 @@ function PrivateRoute({ children, roles }) {
   // Nếu có yêu cầu về vai trò
   if (roles) {
     // Xử lý vai trò admin (manager)
-    if (roles === 'admin' && currentUser.role === 'manager') {
+    if (roles === 'admin' && currentUser.role === USER_ROLES.MANAGER) {
       return children;
     }
     

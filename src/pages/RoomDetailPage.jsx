@@ -3,10 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaUsers, FaBed, FaWifi, FaTv, FaSnowflake, FaUtensils, FaCheck, FaCalendarAlt } from 'react-icons/fa';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import roomsData from '../data/roomsData'; // Giữ lại để sử dụng ảnh
-import '../styles/RoomDetailPage.css';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchRoomById, fetchRooms, fetchRoomTypes } from '../services/api';
+import { services } from '../services';
+import { ROOM_TYPES, ROOM_STATUS } from '../services/constants';
+import '../styles/RoomDetailPage.css';
 
 function RoomDetailPage() {
   const { id } = useParams();
@@ -19,6 +19,8 @@ function RoomDetailPage() {
   const [guests, setGuests] = useState(1);
   const [relatedRooms, setRelatedRooms] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
+  const [roomServices, setRoomServices] = useState([]);
+  const [roomAmenities, setRoomAmenities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -29,8 +31,8 @@ function RoomDetailPage() {
         
         // Fetch all rooms and room types
         const [allRoomsData, roomTypesData] = await Promise.all([
-          fetchRooms(),
-          fetchRoomTypes()
+          services.api.room.fetchRooms(),
+          services.api.room.fetchRoomTypes()
         ]);
         
         console.log('API Rooms Data:', allRoomsData);
@@ -53,29 +55,29 @@ function RoomDetailPage() {
           // Xác định ảnh dựa trên loại phòng
           let imagePath1, imagePath2;
           switch(roomType.rTypeID) {
-            case 'SGL':
-              imagePath1 = '/Images/Rooms/standard-room-1.jpg';
-              imagePath2 = '/Images/Rooms/standard-room-2.jpg';
+            case ROOM_TYPES.SINGLE:
+              imagePath1 = '/images/Rooms/standard-room-1.jpg';
+              imagePath2 = '/images/Rooms/standard-room-2.jpg';
               break;
-            case 'DBL':
-              imagePath1 = '/Images/Rooms/deluxe-room-1.jpg';
-              imagePath2 = '/Images/Rooms/deluxe-room-2.jpg';
+            case ROOM_TYPES.DOUBLE:
+              imagePath1 = '/images/Rooms/deluxe-room-1.jpg';
+              imagePath2 = '/images/Rooms/deluxe-room-2.jpg';
               break;
-            case 'TWN':
-              imagePath1 = '/Images/Rooms/family-room-1.jpg';
-              imagePath2 = '/Images/Rooms/family-room-2.jpg';
+            case ROOM_TYPES.TWIN:
+              imagePath1 = '/images/Rooms/family-room-1.jpg';
+              imagePath2 = '/images/Rooms/family-room-2.jpg';
               break;
-            case 'KIN':
-              imagePath1 = '/Images/Rooms/executive-suite-1.jpg';
-              imagePath2 = '/Images/Rooms/executive-suite-2.jpg';
+            case ROOM_TYPES.KING:
+              imagePath1 = '/images/Rooms/executive-suite-1.jpg';
+              imagePath2 = '/images/Rooms/executive-suite-2.jpg';
               break;
-            case 'FAM':
-              imagePath1 = '/Images/Rooms/penthouse-suite-1.jpg';
-              imagePath2 = '/Images/Rooms/penthouse-suite-2.jpg';
+            case ROOM_TYPES.FAMILY:
+              imagePath1 = '/images/Rooms/penthouse-suite-1.jpg';
+              imagePath2 = '/images/Rooms/penthouse-suite-2.jpg';
               break;
             default:
-              imagePath1 = '/Images/Rooms/standard-room-1.jpg';
-              imagePath2 = '/Images/Rooms/standard-room-2.jpg';
+              imagePath1 = '/images/Rooms/standard-room-1.jpg';
+              imagePath2 = '/images/Rooms/standard-room-2.jpg';
           }
           
           // Tạo đối tượng phòng với cấu trúc phù hợp cho frontend
@@ -88,8 +90,8 @@ function RoomDetailPage() {
             size: roomType.area,
             status: room.roomStatus,
             roomTypeId: roomType.rTypeID,
-            bed: roomType.rTypeID === 'TWN' ? 'Twin Beds' : 'King Bed',
-            view: roomType.rTypeID === 'KIN' || roomType.rTypeID === 'FAM' ? 'Ocean View' : 'City View',
+            bed: roomType.rTypeID === ROOM_TYPES.TWIN ? 'Twin Beds' : 'King Bed',
+            view: roomType.rTypeID === ROOM_TYPES.KING || roomType.rTypeID === ROOM_TYPES.FAMILY ? 'Ocean View' : 'City View',
             images: [imagePath1, imagePath2],
             description: `Experience luxury and comfort in our ${roomType.typeName.replace('_', ' ')}. This spacious ${roomType.area} sqft room can accommodate up to ${roomType.maxGuests} guests.`
           };
@@ -110,10 +112,29 @@ function RoomDetailPage() {
           .slice(0, 3);
           
         setRelatedRooms(related);
+        
+        // Lấy dịch vụ và tiện nghi của phòng
+        try {
+          const roomTypeId = roomData.roomType.rTypeID;
+          
+          // Lấy dịch vụ theo loại phòng
+          const servicesList = await services.api.service.fetchServicesByRoomType(roomTypeId);
+          console.log(`Services for room type ${roomTypeId}:`, servicesList);
+          setRoomServices(servicesList || []);
+          
+          // Lấy tiện nghi theo loại phòng
+          const amenities = await services.api.service.fetchAmenitiesByRoomType(roomTypeId);
+          console.log(`Amenities for room type ${roomTypeId}:`, amenities);
+          setRoomAmenities(amenities || []);
+        } catch (err) {
+          console.error('Error fetching room services and amenities:', err);
+          // Không set error để tránh ảnh hưởng đến việc hiển thị phòng
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching room data:', err);
-        setError('Failed to load room details. Please try again later.');
+        setError(services.utils.api.handleApiError(err));
         setLoading(false);
       }
     };
@@ -187,7 +208,7 @@ function RoomDetailPage() {
   const tax = roomTotal * 0.1;
   const total = roomTotal + tax;
   
-  const handleBookNow = (e) => {
+  const handleBookNow = async (e) => {
     e.preventDefault();
     
     // Kiểm tra xem người dùng đã đăng nhập chưa
@@ -196,13 +217,31 @@ function RoomDetailPage() {
       openLoginModal('/booking');
       return;
     }
+
+    // Kiểm tra tính khả dụng của phòng
+    try {
+      const availability = await services.api.room.checkRoomAvailability(
+        room.id,
+        services.utils.format.formatDateForApi(checkInDate),
+        services.utils.format.formatDateForApi(checkOutDate)
+      );
+
+      if (!availability.isAvailable) {
+        setError('Room is not available for the selected dates');
+        return;
+      }
+    } catch (err) {
+      console.error('Error checking room availability:', err);
+      setError(services.utils.api.handleApiError(err));
+      return;
+    }
     
-    // Nếu đã đăng nhập, tiếp tục quá trình đặt phòng
+    // Nếu đã đăng nhập và phòng khả dụng, tiếp tục quá trình đặt phòng
     const bookingData = {
       roomId: room.id,
       roomName: room.name,
-      checkInDate,
-      checkOutDate,
+      checkInDate: services.utils.format.formatDateForApi(checkInDate),
+      checkOutDate: services.utils.format.formatDateForApi(checkOutDate),
       guests,
       nights,
       price: room.price,
@@ -225,9 +264,10 @@ function RoomDetailPage() {
           <div className="room-title">
             <h1>{room.name}</h1>
             <p>{room.type} Room</p>
+            <p className="room-id">Room ID: {room.id}</p>
           </div>
           <div className="room-price">
-            ${room.price} <span>/ night</span>
+            ${services.utils.format.formatCurrency(room.price)} <span>/ night</span>
           </div>
         </div>
         
@@ -263,6 +303,21 @@ function RoomDetailPage() {
                     <FaCheck />
                     <span>{room.view} View</span>
                   </div>
+                  
+                  {/* Hiển thị các dịch vụ từ API */}
+                  {roomServices && roomServices.length > 0 ? (
+                    roomServices.map((service, index) => (
+                      <div key={index}>
+                        <FaCheck />
+                        <span>{service.serviceName}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div>
+                      <FaCheck />
+                      <span>No additional services</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -270,38 +325,51 @@ function RoomDetailPage() {
             <div className="room-amenities">
               <h3>Amenities</h3>
               <div className="amenities-list">
-                <div>
-                  <FaWifi />
-                  <span>Free WiFi</span>
-                </div>
-                <div>
-                  <FaTv />
-                  <span>Flat-screen TV</span>
-                </div>
-                <div>
-                  <FaSnowflake />
-                  <span>Air Conditioning</span>
-                </div>
-                <div>
-                  <FaUtensils />
-                  <span>Mini Bar</span>
-                </div>
-                <div>
-                  <FaCheck />
-                  <span>Room Service</span>
-                </div>
-                <div>
-                  <FaCheck />
-                  <span>Safe</span>
-                </div>
-                <div>
-                  <FaCheck />
-                  <span>Coffee Maker</span>
-                </div>
-                <div>
-                  <FaCheck />
-                  <span>Hairdryer</span>
-                </div>
+                {/* Hiển thị các tiện nghi từ API */}
+                {roomAmenities && roomAmenities.length > 0 ? (
+                  roomAmenities.map((amenity, index) => (
+                    <div key={index}>
+                      <FaCheck />
+                      <span>{amenity.amenityName}</span>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    {/* Hiển thị các tiện nghi mặc định nếu không có dữ liệu từ API */}
+                    <div>
+                      <FaWifi />
+                      <span>Free WiFi</span>
+                    </div>
+                    <div>
+                      <FaTv />
+                      <span>Flat-screen TV</span>
+                    </div>
+                    <div>
+                      <FaSnowflake />
+                      <span>Air Conditioning</span>
+                    </div>
+                    <div>
+                      <FaUtensils />
+                      <span>Mini Bar</span>
+                    </div>
+                    <div>
+                      <FaCheck />
+                      <span>Room Service</span>
+                    </div>
+                    <div>
+                      <FaCheck />
+                      <span>Safe</span>
+                    </div>
+                    <div>
+                      <FaCheck />
+                      <span>Coffee Maker</span>
+                    </div>
+                    <div>
+                      <FaCheck />
+                      <span>Hairdryer</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -322,6 +390,7 @@ function RoomDetailPage() {
                   endDate={checkOutDate}
                   minDate={new Date()}
                   className="date-picker"
+                  dateFormat={services.constants.DATE_FORMATS.DISPLAY}
                 />
               </div>
               
@@ -338,6 +407,7 @@ function RoomDetailPage() {
                   endDate={checkOutDate}
                   minDate={new Date(checkInDate.getTime() + 86400000)}
                   className="date-picker"
+                  dateFormat={services.constants.DATE_FORMATS.DISPLAY}
                 />
               </div>
               
@@ -360,16 +430,16 @@ function RoomDetailPage() {
               
               <div className="booking-total">
                 <div>
-                  <span>${room.price} x {nights} nights</span>
-                  <span>${roomTotal}</span>
+                  <span>${services.utils.format.formatCurrency(room.price)} x {nights} nights</span>
+                  <span>${services.utils.format.formatCurrency(roomTotal)}</span>
                 </div>
                 <div>
                   <span>Tax (10%)</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>${services.utils.format.formatCurrency(tax)}</span>
                 </div>
                 <div className="total">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${services.utils.format.formatCurrency(total)}</span>
                 </div>
               </div>
               
@@ -389,7 +459,7 @@ function RoomDetailPage() {
                 <div className="related-room-info">
                   <h4>{relatedRoom.name}</h4>
                   <div className="price">
-                    ${relatedRoom.price}<span>/ night</span>
+                    ${services.utils.format.formatCurrency(relatedRoom.price)}<span>/ night</span>
                   </div>
                   <Link to={`/rooms/${relatedRoom.id}`} className="btn-outline">
                     View Details

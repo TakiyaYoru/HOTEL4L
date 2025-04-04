@@ -10,7 +10,7 @@ export default defineConfig({
         target: 'http://203.210.213.196:3016',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '/api')
+        rewrite: (path) => path
       }
     },
     cors: true
