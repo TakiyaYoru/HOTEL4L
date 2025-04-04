@@ -29,6 +29,15 @@ function MyBookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
 
+  // Cache cho roomTypes để giảm API calls
+  let roomTypesCache = null;
+  const getRoomTypes = async () => {
+    if (roomTypesCache) return roomTypesCache;
+    const roomTypes = await services.api.room.fetchRoomTypes();
+    roomTypesCache = roomTypes;
+    return roomTypes;
+  };
+
   // Lấy dữ liệu đặt phòng từ API
   useEffect(() => {
     const fetchBookingsData = async () => {
@@ -56,69 +65,75 @@ function MyBookingsPage() {
 
         // Lấy thông tin chi tiết cho mỗi booking
         const processedBookings = [];
-        
+
         for (const booking of customerData.bookings) {
+          // Bỏ qua các booking null
+          if (!booking) {
+            console.log('Skipping null booking');
+            continue;
+          }
+
           console.log(`Processing booking: ${booking.bookingID}`);
-          
+
+          // 2. Gọi API ../Bookings/{bookingID} để lấy thông tin chi tiết của booking
+          let bookingData = null;
           try {
-            // Lấy thông tin chi tiết booking
-            const bookingDetails = await services.api.booking.fetchBookingDetails(booking.bookingID);
-            console.log(`Booking details for ${booking.bookingID}:`, bookingDetails);
-            
-            // Lấy booking detail đầu tiên (nếu có)
-            const detail = bookingDetails && bookingDetails.length > 0 ? bookingDetails[0] : null;
-            
-            if (!detail) {
-              console.log(`No details found for booking ${booking.bookingID}, using fallback data`);
-              // Fallback nếu không có chi tiết
-              processedBookings.push({
-                id: booking.bookingID,
-                roomId: 'N/A',
-                roomName: 'Unknown Room',
-                checkInDate: booking.bookingTime,
-                checkOutDate: booking.bookingTime,
-                total: booking.totalAmount || 0,
-                status: booking.bookingStatus?.toLowerCase() || 'pending',
-                roomImage: '/images/Rooms/standard-room-1.jpg'
-              });
-              continue;
-            }
-            
-            // Lấy thông tin phòng - thử nhiều cách khác nhau để đảm bảo lấy được dữ liệu
-            console.log(`Fetching room data for room ${detail.roomID}...`);
-            let roomData = null;
-            let roomTypeName = 'Standard Room'; // Giá trị mặc định tốt hơn
-            let roomTypeId = null;
-            
-            try {
-              // Cách 1: Lấy trực tiếp từ API phòng
-              roomData = await services.api.room.fetchRoomById(detail.roomID);
-              console.log(`Room data for ${detail.roomID}:`, roomData);
-              
-              if (roomData) {
-                roomTypeId = roomData.rTypeID;
-                
-                // Cách 2: Lấy thông tin loại phòng
-                if (roomTypeId) {
-                  const roomTypes = await services.api.room.fetchRoomTypes();
-                  const roomType = roomTypes.find(type => type.rTypeID === roomTypeId);
-                  if (roomType && roomType.typeName) {
-                    roomTypeName = roomType.typeName.replace('_', ' ');
-                  }
-                }
-              } else {
-                // Cách 3: Thử lấy thông tin từ booking detail
-                if (detail.roomType) {
-                  roomTypeName = detail.roomType;
-                } else if (booking.roomType) {
-                  roomTypeName = booking.roomType;
+            console.log(`Fetching booking data for ${booking.bookingID}...`);
+            bookingData = await services.api.booking.fetchBookingById(booking.bookingID);
+            console.log(`Booking data for ${booking.bookingID}:`, bookingData);
+          } catch (bookingError) {
+            console.error(`Error fetching booking data for ${booking.bookingID}:`, bookingError);
+            continue;
+          }
+
+          if (!bookingData) {
+            console.log(`No booking data found for ${booking.bookingID}, skipping this booking`);
+            continue;
+          }
+
+          // 3. Lấy bookingDetails từ dữ liệu booking
+          const bookingDetails = bookingData.bookingDetails || [];
+          const detail = bookingDetails && bookingDetails.length > 0 ? bookingDetails[0] : null;
+
+          if (!detail || !detail.detailID) {
+            console.log(`No details or detailID found for booking ${booking.bookingID}, skipping this booking`);
+            continue;
+          }
+
+          // 4. Gọi API bookingDetails để lấy thông tin chi tiết
+          let bookingDetailData = null;
+          let roomId = detail.roomID || 'N/A';
+          let roomTypeName = 'Standard Room'; // Giá trị mặc định
+
+          try {
+            console.log(`Fetching booking detail data for detailID ${detail.detailID}...`);
+            bookingDetailData = await services.api.booking.fetchBookingDetailById(detail.detailID);
+            console.log(`Booking detail data for ${detail.detailID}:`, bookingDetailData);
+
+            if (!bookingDetailData || !bookingDetailData.room) {
+              console.log(`No detailed data or room found for detailID ${detail.detailID}, using fallback`);
+              // Sử dụng roomID từ bookingDetails nếu có
+              roomId = bookingDetailData?.roomID || detail.roomID || 'N/A';
+            } else {
+              roomId = bookingDetailData.roomID || 'N/A';
+              const rTypeID = bookingDetailData.room.rTypeID;
+
+              if (rTypeID) {
+                // 5. Lấy thông tin loại phòng
+                const roomTypes = await getRoomTypes();
+                const roomType = roomTypes.find(type => type.rTypeID === rTypeID);
+                if (roomType && roomType.typeName) {
+                  roomTypeName = roomType.typeName.replace('_', ' ');
+                } else {
+                  console.log(`Room type not found for rTypeID ${rTypeID}, using fallback`);
                 }
               }
-            } catch (roomError) {
-              console.error(`Error fetching room data for ${detail.roomID}:`, roomError);
-              
-              // Cách 4: Nếu tất cả đều thất bại, sử dụng dữ liệu cứng dựa trên roomID
-              const roomIdPrefix = detail.roomID.substring(0, 3).toUpperCase();
+            }
+          } catch (detailError) {
+            console.error(`Error fetching booking detail for ${detail.detailID}:`, detailError);
+            // Fallback dựa trên roomID prefix nếu có
+            if (roomId !== 'N/A') {
+              const roomIdPrefix = roomId.substring(0, 3).toUpperCase();
               if (roomIdPrefix === 'STD') roomTypeName = 'Standard Room';
               else if (roomIdPrefix === 'DEL') roomTypeName = 'Deluxe Room';
               else if (roomIdPrefix === 'FAM') roomTypeName = 'Family Room';
@@ -126,45 +141,30 @@ function MyBookingsPage() {
               else if (roomIdPrefix === 'EXE') roomTypeName = 'Executive Suite';
               else if (roomIdPrefix === 'PRE') roomTypeName = 'Presidential Suite';
             }
-            
-            // Xác định trạng thái booking
-            let status = 'pending';
-            if (booking.bookingStatus) {
-              status = booking.bookingStatus.toLowerCase();
-            }
-            
-            // Tạo đối tượng booking để hiển thị
-            processedBookings.push({
-              id: booking.bookingID,
-              roomId: detail.roomID || 'N/A',
-              roomName: roomTypeName,
-              checkInDate: detail.checkinDate || booking.bookingTime,
-              checkOutDate: detail.checkoutDate || booking.bookingTime,
-              total: booking.totalAmount || 0,
-              status: status,
-              roomImage: `/images/Rooms/${roomTypeName.toLowerCase().replace(/\s+/g, '-')}-1.jpg`
-            });
-            
-          } catch (bookingError) {
-            console.error(`Error processing booking ${booking.bookingID}:`, bookingError);
-            // Thêm booking với dữ liệu tối thiểu nếu xử lý thất bại
-            processedBookings.push({
-              id: booking.bookingID,
-              roomId: 'N/A',
-              roomName: 'Unknown Room',
-              checkInDate: booking.bookingTime,
-              checkOutDate: booking.bookingTime,
-              total: booking.totalAmount || 0,
-              status: booking.bookingStatus?.toLowerCase() || 'pending',
-              roomImage: '/images/Rooms/standard-room-1.jpg'
-            });
           }
+
+          // Xác định trạng thái booking
+          let status = 'pending';
+          if (bookingData.bookingStatus) {
+            status = bookingData.bookingStatus.toLowerCase();
+          }
+
+          // Tạo đối tượng booking để hiển thị
+          processedBookings.push({
+            id: bookingData.bookingID,
+            roomId: roomId,
+            roomName: roomTypeName,
+            checkInDate: detail.checkinDate || bookingData.bookingTime,
+            checkOutDate: detail.checkoutDate || bookingData.bookingTime,
+            total: bookingData.totalAmount || 0,
+            status: status,
+          });
         }
-        
+
         console.log('Final processed bookings:', processedBookings);
         setBookings(processedBookings);
         setFilteredBookings(processedBookings);
-        
+
       } catch (err) {
         console.error('Error fetching bookings data:', err);
         setError('Failed to load your bookings. Please try again later.');
@@ -181,12 +181,12 @@ function MyBookingsPage() {
   // Lọc đặt phòng dựa trên bộ lọc và tìm kiếm
   useEffect(() => {
     let result = [...bookings];
-    
+
     // Lọc theo trạng thái
     if (activeFilter !== 'all') {
       result = result.filter(booking => booking.status === activeFilter);
     }
-    
+
     // Lọc theo tìm kiếm
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
@@ -206,13 +206,13 @@ function MyBookingsPage() {
     if (!window.confirm('Are you sure you want to cancel this booking?')) {
       return;
     }
-    
+
     try {
       setLoading(true);
-      
+
       // Gọi API để hủy đặt phòng
       await services.api.booking.cancelBooking(bookingId);
-      
+
       // Cập nhật trạng thái đặt phòng thành 'cancelled'
       const updatedBookings = bookings.map(booking => {
         if (booking.id === bookingId) {
@@ -220,20 +220,20 @@ function MyBookingsPage() {
         }
         return booking;
       });
-      
+
       setBookings(updatedBookings);
-      setFilteredBookings(updatedBookings.filter(booking => 
+      setFilteredBookings(updatedBookings.filter(booking =>
         activeFilter === 'all' || booking.status === activeFilter
       ));
-      
+
       setLoading(false);
-      
+
       alert('Booking cancelled successfully!');
     } catch (err) {
       console.error('Error cancelling booking:', err);
       setError('Failed to cancel booking. Please try again.');
       setLoading(false);
-      
+
       alert('Failed to cancel booking. Please try again.');
     }
   };
@@ -267,43 +267,43 @@ function MyBookingsPage() {
           {/* Bộ lọc và tìm kiếm */}
           <div className="booking-filters">
             <div className="filter-group">
-              <button 
+              <button
                 className={`filter-button ${activeFilter === 'all' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('all')}
               >
                 All
               </button>
-              <button 
+              <button
                 className={`filter-button ${activeFilter === 'confirmed' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('confirmed')}
               >
                 Confirmed
               </button>
-              <button 
+              <button
                 className={`filter-button ${activeFilter === 'pending' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('pending')}
               >
                 Pending
               </button>
-              <button 
+              <button
                 className={`filter-button ${activeFilter === 'completed' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('completed')}
               >
                 Completed
               </button>
-              <button 
+              <button
                 className={`filter-button ${activeFilter === 'cancelled' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('cancelled')}
               >
                 Cancelled
               </button>
             </div>
-            
+
             <div className="search-box">
               <FaSearch className="search-icon" />
-              <input 
-                type="text" 
-                placeholder="Search bookings..." 
+              <input
+                type="text"
+                placeholder="Search bookings..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -317,14 +317,14 @@ function MyBookingsPage() {
               <p>Loading your bookings...</p>
             </div>
           )}
-          
+
           {/* Hiển thị lỗi */}
           {error && (
             <div className="error-container">
               <FaExclamationTriangle />
               <h3>Error loading bookings</h3>
               <p>{error}</p>
-              <button 
+              <button
                 className="btn-primary"
                 onClick={() => window.location.reload()}
               >
@@ -332,27 +332,27 @@ function MyBookingsPage() {
               </button>
             </div>
           )}
-          
+
           {/* Danh sách đặt phòng */}
           {!loading && !error && currentItems.length === 0 ? (
             <div className="empty-state">
               <h3>No bookings found</h3>
               <p>You don't have any bookings matching your criteria.</p>
-              <Link to="/rooms" className="booking-button btn-primary">Browse Rooms</Link>
+              <Link to="/rooms" className="booking-button btn-outline">Browse Rooms</Link>
             </div>
           ) : !loading && !error && (
             <div className="rooms-grid">
               {currentItems.map((booking) => (
                 <div className="room-card" key={booking.id}>
-                  <div 
-                    className="related-room-image" 
+                  <div
+                    className="related-room-image2"
                     style={{ backgroundImage: `url(${booking.roomImage})` }}
                   >
                     <div className={`booking-status-badge status-${booking.status || 'pending'}`}>
                       {booking.status ? booking.status.charAt(0).toUpperCase() + booking.status.slice(1) : 'Pending'}
                     </div>
                   </div>
-                  
+
                   <div className="booking-info">
                     {/* Tên phòng */}
                     <h3 className="booking-name">
@@ -392,27 +392,18 @@ function MyBookingsPage() {
                       <span>${booking.total}</span>
                     </div>
                   </div>
-                  
+
                   <div className="booking-actions">
-                    <Link 
-                      to={`/my-bookings/${booking.id}`} 
-                      className="booking-button btn-primary"
+                    <Link
+                      to={`/my-bookings/${booking.id}`}
+                      className="btn-outline"
                     >
                       <FaEye /> View Details
                     </Link>
-                    
-                    {booking.status === 'confirmed' && (
-                      <button 
-                        className="booking-button btn-danger"
-                        onClick={() => handleCancelBooking(booking.id)}
-                      >
-                        <FaTimes /> Cancel
-                      </button>
-                    )}
-                    
+
                     {booking.status === 'completed' && (
-                      <Link 
-                        to={`/rooms/${booking.roomId}`} 
+                      <Link
+                        to={`/rooms/${booking.roomId}`}
                         className="booking-button btn-secondary"
                       >
                         <FaCheck /> Book Again
@@ -423,18 +414,18 @@ function MyBookingsPage() {
               ))}
             </div>
           )}
-          
+
           {/* Phân trang */}
           {totalPages > 1 && (
             <div className="pagination">
-              <button 
+              <button
                 className={`pagination-button ${currentPage === 1 ? 'disabled' : ''}`}
                 onClick={() => currentPage > 1 && paginate(currentPage - 1)}
                 disabled={currentPage === 1}
               >
                 <FaChevronLeft />
               </button>
-              
+
               {[...Array(totalPages)].map((_, index) => (
                 <button
                   key={index}
@@ -444,8 +435,8 @@ function MyBookingsPage() {
                   {index + 1}
                 </button>
               ))}
-              
-              <button 
+
+              <button
                 className={`pagination-button ${currentPage === totalPages ? 'disabled' : ''}`}
                 onClick={() => currentPage < totalPages && paginate(currentPage + 1)}
                 disabled={currentPage === totalPages}

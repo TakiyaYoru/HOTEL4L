@@ -17,9 +17,11 @@ import {
   FaSpinner,
   FaExclamationTriangle,
   FaArrowLeft,
-  FaUsers
+  FaUsers,
+  FaHashtag,
+  FaInfoCircle
 } from 'react-icons/fa';
-import '../styles/BookingDetailPage.css'; // CSS riêng cho trang chi tiết đặt phòng
+import '../styles/BookingDetailPage.css';
 
 function MyBookingDetailPage() {
   const { bookingId } = useParams();
@@ -30,6 +32,15 @@ function MyBookingDetailPage() {
   const [error, setError] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+
+  // Cache cho roomTypes để giảm API calls
+  let roomTypesCache = null;
+  const getRoomTypes = async () => {
+    if (roomTypesCache) return roomTypesCache;
+    const roomTypes = await services.api.room.fetchRoomTypes();
+    roomTypesCache = roomTypes;
+    return roomTypes;
+  };
 
   // Lấy thông tin chi tiết đặt phòng từ API
   useEffect(() => {
@@ -43,77 +54,105 @@ function MyBookingDetailPage() {
         setLoading(true);
         setError(null);
 
-        // 1. Lấy thông tin booking cơ bản
-        console.log(`Fetching booking data for ID: ${bookingId}`);
-        const bookingData = await services.api.booking.fetchBookingById(bookingId);
-        console.log('Booking data received:', bookingData);
-
-        if (!bookingData) {
-          setError('Booking not found');
-          setLoading(false);
-          return;
-        }
-
-        // 2. Lấy chi tiết booking
-        console.log(`Fetching booking details for ID: ${bookingId}`);
-        const bookingDetails = await services.api.booking.fetchBookingDetails(bookingId);
-        console.log('Booking details received:', bookingDetails);
-
-        // Lấy booking detail đầu tiên (nếu có)
-        const detail = bookingDetails && bookingDetails.length > 0 ? bookingDetails[0] : null;
-
-        if (!detail) {
-          setError('Booking details not found');
-          setLoading(false);
-          return;
-        }
-
-        // 3. Lấy thông tin phòng - thử nhiều cách khác nhau để đảm bảo lấy được dữ liệu
-        console.log(`Fetching room data for ID: ${detail.roomID}`);
-        let roomData = null;
-        let roomTypeName = 'Standard Room'; // Giá trị mặc định tốt hơn
-        let roomTypeData = null;
-        
-        try {
-          // Cách 1: Lấy trực tiếp từ API phòng
-          roomData = await services.api.room.fetchRoomById(detail.roomID);
-          console.log('Room data received:', roomData);
-          
-          if (roomData) {
-            // Cách 2: Lấy thông tin loại phòng từ roomData
-            if (roomData.rTypeID) {
-              console.log(`Fetching room type data for ID: ${roomData.rTypeID}`);
-              const roomTypes = await services.api.room.fetchRoomTypes();
-              roomTypeData = roomTypes.find(type => type.rTypeID === roomData.rTypeID);
-              if (roomTypeData && roomTypeData.typeName) {
-                roomTypeName = roomTypeData.typeName.replace('_', ' ');
-              }
-            }
-          } else {
-            // Cách 3: Thử lấy thông tin từ booking detail
-            if (detail.roomType) {
-              roomTypeName = detail.roomType;
-            } else if (bookingData.roomType) {
-              roomTypeName = bookingData.roomType;
-            }
-          }
-        } catch (roomError) {
-          console.error(`Error fetching room data:`, roomError);
-          
-          // Cách 4: Nếu tất cả đều thất bại, sử dụng dữ liệu cứng dựa trên roomID
-          const roomIdPrefix = detail.roomID.substring(0, 3).toUpperCase();
-          if (roomIdPrefix === 'STD') roomTypeName = 'Standard Room';
-          else if (roomIdPrefix === 'DEL') roomTypeName = 'Deluxe Room';
-          else if (roomIdPrefix === 'FAM') roomTypeName = 'Family Room';
-          else if (roomIdPrefix === 'SUI') roomTypeName = 'Suite Room';
-          else if (roomIdPrefix === 'EXE') roomTypeName = 'Executive Suite';
-          else if (roomIdPrefix === 'PRE') roomTypeName = 'Presidential Suite';
-        }
-
-        // 5. Lấy thông tin khách hàng
-        console.log('Fetching customer data');
+        // 1. Lấy thông tin khách hàng hiện tại (bao gồm bookings)
+        console.log('Fetching current customer data...');
         const customerData = await services.api.customer.fetchCurrentCustomer();
         console.log('Customer data received:', customerData);
+
+        if (!customerData || !customerData.bookings || customerData.bookings.length === 0) {
+          console.log('No bookings found for customer');
+          setError('No bookings found for this customer.');
+          setLoading(false);
+          return;
+        }
+
+        // Kiểm tra xem bookingId có tồn tại trong danh sách bookings của khách hàng không
+        const bookingExists = customerData.bookings.find(b => b && b.bookingID === bookingId);
+        if (!bookingExists) {
+          console.log(`Booking ${bookingId} not found for this customer`);
+          setError('Booking not found.');
+          setLoading(false);
+          return;
+        }
+
+        // 2. Gọi API ../Bookings/{bookingID} để lấy thông tin chi tiết của booking
+        let bookingData = null;
+        try {
+          console.log(`Fetching booking data for ${bookingId}...`);
+          bookingData = await services.api.booking.fetchBookingById(bookingId);
+          console.log(`Booking data for ${bookingId}:`, bookingData);
+        } catch (bookingError) {
+          console.error(`Error fetching booking data for ${bookingId}:`, bookingError);
+          setError('Failed to fetch booking data.');
+          setLoading(false);
+          return;
+        }
+
+        if (!bookingData) {
+          console.log(`No booking data found for ${bookingId}`);
+          setError('Booking not found.');
+          setLoading(false);
+          return;
+        }
+
+        // 3. Lấy bookingDetails từ dữ liệu booking
+        const bookingDetails = bookingData.bookingDetails || [];
+        const detail = bookingDetails && bookingDetails.length > 0 ? bookingDetails[0] : null;
+
+        if (!detail || !detail.detailID) {
+          console.log(`No details or detailID found for booking ${bookingId}`);
+          setError('Booking details not found.');
+          setLoading(false);
+          return;
+        }
+
+        // 4. Gọi API bookingDetails để lấy thông tin chi tiết
+        let bookingDetailData = null;
+        let roomId = detail.roomID || 'N/A';
+        let roomTypeName = 'Standard Room';
+        let roomTypeData = null;
+
+        try {
+          console.log(`Fetching booking detail data for detailID ${detail.detailID}...`);
+          bookingDetailData = await services.api.booking.fetchBookingDetailById(detail.detailID);
+          console.log(`Booking detail data for ${detail.detailID}:`, bookingDetailData);
+
+          if (!bookingDetailData || !bookingDetailData.room) {
+            console.log(`No detailed data or room found for detailID ${detail.detailID}, using fallback`);
+            roomId = bookingDetailData?.roomID || detail.roomID || 'N/A';
+          } else {
+            roomId = bookingDetailData.roomID || 'N/A';
+            const rTypeID = bookingDetailData.room.rTypeID;
+
+            if (rTypeID) {
+              const roomTypes = await getRoomTypes();
+              const roomType = roomTypes.find(type => type.rTypeID === rTypeID);
+              if (roomType && roomType.typeName) {
+                roomTypeName = roomType.typeName.replace('_', ' ');
+                roomTypeData = roomType;
+              } else {
+                console.log(`Room type not found for rTypeID ${rTypeID}, using fallback`);
+              }
+            }
+          }
+        } catch (detailError) {
+          console.error(`Error fetching booking detail for ${detail.detailID}:`, detailError);
+          if (roomId !== 'N/A') {
+            const roomIdPrefix = roomId.substring(0, 3).toUpperCase();
+            if (roomIdPrefix === 'STD') roomTypeName = 'Standard Room';
+            else if (roomIdPrefix === 'DEL') roomTypeName = 'Deluxe Room';
+            else if (roomIdPrefix === 'FAM') roomTypeName = 'Family Room';
+            else if (roomIdPrefix === 'SUI') roomTypeName = 'Suite Room';
+            else if (roomIdPrefix === 'EXE') roomTypeName = 'Executive Suite';
+            else if (roomIdPrefix === 'PRE') roomTypeName = 'Presidential Suite';
+          }
+        }
+
+        // Xác định trạng thái booking
+        let status = 'pending';
+        if (bookingData.bookingStatus) {
+          status = bookingData.bookingStatus.toLowerCase();
+        }
 
         // Tính số đêm
         const checkInDate = new Date(detail.checkinDate);
@@ -140,22 +179,21 @@ function MyBookingDetailPage() {
         // Tạo đối tượng booking để hiển thị
         const processedBooking = {
           id: bookingData.bookingID,
-          roomId: detail.roomID || 'N/A',
+          roomId: roomId,
           roomName: roomTypeName,
           roomType: roomTypeData?.typeName || roomTypeName,
           checkInDate: detail.checkinDate,
           checkInTime: '14:00', // Mặc định
           checkOutDate: detail.checkoutDate,
           checkOutTime: '12:00', // Mặc định
-          guests: roomData?.maxGuests || 2,
+          guests: roomTypeData?.maxGuests || 2,
           price: detail.pricePerDay || bookingData.totalAmount / nights || 0,
           nights: nights || 1,
           total: bookingData.totalAmount || 0,
-          status: bookingData.bookingStatus?.toLowerCase() || 'pending',
+          status: status,
           paymentMethod: bookingData.payment?.method || 'Credit Card',
           paymentStatus: bookingData.paymentStatus ? 'Paid' : 'Pending',
           bookingDate: bookingData.bookingTime,
-          roomImage: `/images/Rooms/${roomTypeName.toLowerCase().replace(/\s+/g, '-')}-1.jpg`,
           primaryGuest: {
             fullName: customerData?.cName || 'Guest',
             email: customerData?.email || 'guest@example.com',
@@ -229,6 +267,11 @@ function MyBookingDetailPage() {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  // Format trạng thái
+  const formatStatus = (status) => {
+    return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending';
+  };
+
   // Hiển thị icon cho timeline
   const getTimelineIcon = (iconName) => {
     switch (iconName) {
@@ -242,22 +285,6 @@ function MyBookingDetailPage() {
         return <FaTimesCircle />;
       default:
         return <FaCalendarAlt />;
-    }
-  };
-
-  // Hiển thị trạng thái đặt phòng
-  const renderBookingStatus = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return <span className="status-badge status-confirmed">Confirmed</span>;
-      case 'pending':
-        return <span className="status-badge status-pending">Pending</span>;
-      case 'completed':
-        return <span className="status-badge status-completed">Completed</span>;
-      case 'cancelled':
-        return <span className="status-badge status-cancelled">Cancelled</span>;
-      default:
-        return <span className="status-badge status-pending">Pending</span>;
     }
   };
 
@@ -307,40 +334,35 @@ function MyBookingDetailPage() {
             <div className="detail-card">
               <div className="detail-header">
                 <h2>Booking Information</h2>
-                {renderBookingStatus(booking.status)}
               </div>
               
               <div className="detail-body">
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaCalendarAlt className="detail-icon" />
-                    <span>Booking ID:</span>
+                <div className="booking-details">
+                  <div className="booking-detail">
+                    <FaHashtag className="booking-icon" />
+                    <span className="booking-detail-label">Booking ID:</span>
+                    <span>{booking.id}</span>
                   </div>
-                  <div className="detail-value">{booking.id}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaCalendarAlt className="detail-icon" />
-                    <span>Booking Date:</span>
+                  <div className="booking-detail">
+                    <FaCalendarAlt className="booking-icon" />
+                    <span className="booking-detail-label">Booking Date:</span>
+                    <span>{formatDate(booking.bookingDate)}</span>
                   </div>
-                  <div className="detail-value">{formatDate(booking.bookingDate)}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaDollarSign className="detail-icon" />
-                    <span>Payment Method:</span>
+                  <div className="booking-detail">
+                    <FaDollarSign className="booking-icon" />
+                    <span className="booking-detail-label">Payment Method:</span>
+                    <span>{booking.paymentMethod}</span>
                   </div>
-                  <div className="detail-value">{booking.paymentMethod}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaDollarSign className="detail-icon" />
-                    <span>Payment Status:</span>
+                  <div className="booking-detail">
+                    <FaDollarSign className="booking-icon" />
+                    <span className="booking-detail-label">Payment Status:</span>
+                    <span>{booking.paymentStatus}</span>
                   </div>
-                  <div className="detail-value">{booking.paymentStatus}</div>
+                  <div className="booking-detail">
+                    <FaInfoCircle className="booking-icon" />
+                    <span className="booking-detail-label">Status:</span>
+                    <span>{formatStatus(booking.status)}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -352,44 +374,22 @@ function MyBookingDetailPage() {
               </div>
               
               <div className="detail-body">
-                <div className="room-image-container">
-                  <img 
-                    src={booking.roomImage} 
-                    alt={booking.roomName} 
-                    className="room-detail-image" 
-                  />
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaBed className="detail-icon" />
-                    <span>Room Name:</span>
+                <div className="booking-details">
+                  <div className="booking-detail">
+                    <FaBed className="booking-icon" />
+                    <span className="booking-detail-label">Room Name:</span>
+                    <span>{booking.roomName.toUpperCase()}</span>
                   </div>
-                  <div className="detail-value">{booking.roomName}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaBed className="detail-icon" />
-                    <span>Room ID:</span>
+                  <div className="booking-detail">
+                    <FaBed className="booking-icon" />
+                    <span className="booking-detail-label">Room ID:</span>
+                    <span>{booking.roomId}</span>
                   </div>
-                  <div className="detail-value">{booking.roomId}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaBed className="detail-icon" />
-                    <span>Room Type:</span>
+                  <div className="booking-detail">
+                    <FaUsers className="booking-icon" />
+                    <span className="booking-detail-label">Guests:</span>
+                    <span>{booking.guests}</span>
                   </div>
-                  <div className="detail-value">{booking.roomType}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaUsers className="detail-icon" />
-                    <span>Guests:</span>
-                  </div>
-                  <div className="detail-value">{booking.guests}</div>
                 </div>
               </div>
             </div>
@@ -401,48 +401,32 @@ function MyBookingDetailPage() {
               </div>
               
               <div className="detail-body">
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaCalendarAlt className="detail-icon" />
-                    <span>Check-in:</span>
+                <div className="booking-details">
+                  <div className="booking-detail">
+                    <FaCalendarAlt className="booking-icon" />
+                    <span className="booking-detail-label">Check-in:</span>
+                    <span>{formatDate(booking.checkInDate)} at {booking.checkInTime}</span>
                   </div>
-                  <div className="detail-value">
-                    {formatDate(booking.checkInDate)} at {booking.checkInTime}
+                  <div className="booking-detail">
+                    <FaCalendarAlt className="booking-icon" />
+                    <span className="booking-detail-label">Check-out:</span>
+                    <span>{formatDate(booking.checkOutDate)} at {booking.checkOutTime}</span>
                   </div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaCalendarAlt className="detail-icon" />
-                    <span>Check-out:</span>
+                  <div className="booking-detail">
+                    <FaClock className="booking-icon" />
+                    <span className="booking-detail-label">Duration:</span>
+                    <span>{booking.nights} nights</span>
                   </div>
-                  <div className="detail-value">
-                    {formatDate(booking.checkOutDate)} at {booking.checkOutTime}
+                  <div className="booking-detail">
+                    <FaDollarSign className="booking-icon" />
+                    <span className="booking-detail-label">Price per night:</span>
+                    <span>${booking.price}</span>
                   </div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaClock className="detail-icon" />
-                    <span>Duration:</span>
+                  <div className="booking-detail">
+                    <FaDollarSign className="booking-icon" />
+                    <span className="booking-detail-label">Total Amount:</span>
+                    <span>${booking.total}</span>
                   </div>
-                  <div className="detail-value">{booking.nights} nights</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaDollarSign className="detail-icon" />
-                    <span>Price per night:</span>
-                  </div>
-                  <div className="detail-value">${booking.price}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaDollarSign className="detail-icon" />
-                    <span>Total Amount:</span>
-                  </div>
-                  <div className="detail-value">${booking.total}</div>
                 </div>
               </div>
             </div>
@@ -455,44 +439,32 @@ function MyBookingDetailPage() {
               
               <div className="detail-body">
                 <h3>Primary Guest</h3>
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaUser className="detail-icon" />
-                    <span>Full Name:</span>
+                <div className="booking-details">
+                  <div className="booking-detail">
+                    <FaUser className="booking-icon" />
+                    <span className="booking-detail-label">Full Name:</span>
+                    <span>{booking.primaryGuest.fullName}</span>
                   </div>
-                  <div className="detail-value">{booking.primaryGuest.fullName}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaEnvelope className="detail-icon" />
-                    <span>Email:</span>
+                  <div className="booking-detail">
+                    <FaEnvelope className="booking-icon" />
+                    <span className="booking-detail-label">Email:</span>
+                    <span>{booking.primaryGuest.email}</span>
                   </div>
-                  <div className="detail-value">{booking.primaryGuest.email}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaPhone className="detail-icon" />
-                    <span>Phone:</span>
+                  <div className="booking-detail">
+                    <FaPhone className="booking-icon" />
+                    <span className="booking-detail-label">Phone:</span>
+                    <span>{booking.primaryGuest.phone}</span>
                   </div>
-                  <div className="detail-value">{booking.primaryGuest.phone}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaIdCard className="detail-icon" />
-                    <span>ID Card:</span>
+                  <div className="booking-detail">
+                    <FaIdCard className="booking-icon" />
+                    <span className="booking-detail-label">ID Card:</span>
+                    <span>{booking.primaryGuest.idCard}</span>
                   </div>
-                  <div className="detail-value">{booking.primaryGuest.idCard}</div>
-                </div>
-                
-                <div className="detail-row">
-                  <div className="detail-label">
-                    <FaMapMarkerAlt className="detail-icon" />
-                    <span>Address:</span>
+                  <div className="booking-detail">
+                    <FaMapMarkerAlt className="booking-icon" />
+                    <span className="booking-detail-label">Address:</span>
+                    <span>{booking.primaryGuest.address}</span>
                   </div>
-                  <div className="detail-value">{booking.primaryGuest.address}</div>
                 </div>
                 
                 {booking.companions && booking.companions.length > 0 && (
@@ -500,20 +472,17 @@ function MyBookingDetailPage() {
                     <h3>Accompanying Guests</h3>
                     {booking.companions.map((companion, index) => (
                       <div key={index} className="companion-info">
-                        <div className="detail-row">
-                          <div className="detail-label">
-                            <FaUser className="detail-icon" />
-                            <span>Full Name:</span>
+                        <div className="booking-details">
+                          <div className="booking-detail">
+                            <FaUser className="booking-icon" />
+                            <span className="booking-detail-label">Full Name:</span>
+                            <span>{companion.fullName}</span>
                           </div>
-                          <div className="detail-value">{companion.fullName}</div>
-                        </div>
-                        
-                        <div className="detail-row">
-                          <div className="detail-label">
-                            <FaIdCard className="detail-icon" />
-                            <span>ID Card:</span>
+                          <div className="booking-detail">
+                            <FaIdCard className="booking-icon" />
+                            <span className="booking-detail-label">ID Card:</span>
+                            <span>{companion.idCard}</span>
                           </div>
-                          <div className="detail-value">{companion.idCard}</div>
                         </div>
                       </div>
                     ))}
@@ -595,7 +564,7 @@ function MyBookingDetailPage() {
               {booking.status === 'completed' && (
                 <Link 
                   to={`/rooms/${booking.roomId}`} 
-                  className="btn-secondary"
+                  className="btn-primary"
                 >
                   Book Again
                 </Link>

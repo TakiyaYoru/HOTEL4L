@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
     DETAILS: '/bookingDetails',
     CANCEL: (bookingId) => `/bookings/${bookingId}/cancel`
   },
+  BOOKING_DETAILS: '/bookingDetails',
   CUSTOMERS: {
     BASE: '/customers',
     SEARCH: '/customers/search',

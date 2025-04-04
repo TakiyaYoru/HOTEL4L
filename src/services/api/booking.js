@@ -29,6 +29,9 @@ export const fetchUserBookings = async () => {
   }
 };
 
+
+
+
 // Lấy thông tin chi tiết của một đặt phòng
 export const fetchBookingById = async (bookingId) => {
   try {
@@ -36,6 +39,18 @@ export const fetchBookingById = async (bookingId) => {
     return response.data;
   } catch (error) {
     console.error(`Error fetching booking with id ${bookingId}:`, error);
+    throw error;
+  }
+};
+
+
+// Lấy thông tin chi tiết của một BookingDetail dựa trên detailID
+export const fetchBookingDetailById = async (detailID) => {
+  try {
+    const response = await api.get(`${API_ENDPOINTS.BOOKING_DETAILS}/${detailID}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching booking detail with ID ${detailID}:`, error);
     throw error;
   }
 };
