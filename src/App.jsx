@@ -12,7 +12,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ProfilePage from './pages/ProfilePage';
-import MyBookingsPage from './pages/MyBookingsPage'; 
+import MyBookingsPage from './pages/MyBookingsPage';
+import MyBookingDetailPage from './pages/MyBookingDetailPage';
 import PrivateRoute from './components/auth/PrivateRoute'; 
 import { useAuth } from './contexts/AuthContext';
 import FavoritePage from './pages/FavoritePage';
@@ -53,7 +54,12 @@ function App() {
             <PrivateRoute>
               <MyBookingsPage />
             </PrivateRoute>
-          } /> 
+          } />
+          <Route path="/my-bookings/:bookingId" element={
+            <PrivateRoute>
+              <MyBookingDetailPage />
+            </PrivateRoute>
+          } />
           
           {/* Trang cá nhân - yêu cầu đăng nhập */}
           <Route path="/profile" element={
