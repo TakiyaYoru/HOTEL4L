@@ -1,23 +1,19 @@
+// services/api/booking.js
 import api from '../utils/api';
-import { API_ENDPOINTS, STORAGE_KEYS } from '../constants';
+import { API_ENDPOINTS, STORAGE_KEYS, BOOKING_STATUS } from '../constants'; // Đảm bảo import BOOKING_STATUS
 import { formatDateForApi } from '../utils/format';
 
 // Lấy danh sách đặt phòng của người dùng hiện tại
 export const fetchUserBookings = async () => {
   try {
-    // Lấy thông tin người dùng hiện tại từ localStorage
     const currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_DATA));
     if (!currentUser) {
       throw new Error('User not logged in');
     }
     
-    // Sử dụng username hoặc id tùy thuộc vào cái nào có sẵn
     const userIdentifier = currentUser.username;
-    
-    // Gọi API để lấy thông tin customer bao gồm bookings
     const response = await api.get(`${API_ENDPOINTS.CUSTOMERS.BASE}/${userIdentifier}`);
     
-    // Trả về danh sách bookings từ response
     if (response.data && response.data.bookings) {
       return response.data.bookings;
     }
@@ -29,9 +25,6 @@ export const fetchUserBookings = async () => {
   }
 };
 
-
-
-
 // Lấy thông tin chi tiết của một đặt phòng
 export const fetchBookingById = async (bookingId) => {
   try {
@@ -42,7 +35,6 @@ export const fetchBookingById = async (bookingId) => {
     throw error;
   }
 };
-
 
 // Lấy thông tin chi tiết của một BookingDetail dựa trên detailID
 export const fetchBookingDetailById = async (detailID) => {
@@ -58,29 +50,25 @@ export const fetchBookingDetailById = async (detailID) => {
 // Tạo đặt phòng mới
 export const createBooking = async (bookingData) => {
   try {
-    // Lấy thông tin người dùng hiện tại từ localStorage
     const currentUser = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_DATA));
     if (!currentUser) {
       throw new Error('User not logged in');
     }
     
-    // Đảm bảo có employeeID (API yêu cầu)
     const employeeID = bookingData.employeeID || "emp000001";
     const bookingID = bookingData.bookingID || 'BOOK' + Date.now().toString().slice(-8);
-    
-    // Sử dụng paymentID từ bookingData, không tạo mới
     const paymentID = bookingData.paymentID;
     
-    // Chuẩn bị dữ liệu booking theo cấu trúc API
     const bookingPayload = {
       bookingID: bookingID,
       bookingTime: new Date().toISOString(),
       totalAmount: bookingData.totalAmount || 0,
-      bookingStatus: bookingData.bookingStatus || "Confirmed",
+      bookingStatus: BOOKING_STATUS.PENDING, // Trạng thái ban đầu là PENDING
       paymentStatus: bookingData.paymentStatus || false,
       paymentID: paymentID,
       customerID: bookingData.customerID || currentUser.id || currentUser.username,
       employeeID: employeeID,
+      checkInCode: null, // Thêm trường checkInCode, ban đầu là null
       payment: bookingData.paymentMethod !== 'cash' && paymentID ? {
         paymentID: paymentID,
         paymentTime: bookingData.payment?.paymentTime || new Date().toISOString(),
@@ -114,10 +102,8 @@ export const createBooking = async (bookingData) => {
 // Tạo chi tiết đặt phòng
 export const createBookingDetail = async (bookingDetail) => {
   try {
-    // Đảm bảo có detailID (API yêu cầu)
     const detailID = bookingDetail.detailID || 'BD' + Date.now().toString().slice(-8);
     
-    // Chuẩn bị dữ liệu booking detail theo cấu trúc API
     const bookingDetailPayload = {
       detailID: detailID,
       checkinDate: formatDateForApi(bookingDetail.checkinDate),
@@ -127,25 +113,8 @@ export const createBookingDetail = async (bookingDetail) => {
       totalPrice: bookingDetail.totalPrice || 0,
       bookingID: bookingDetail.bookingID,
       roomID: bookingDetail.roomID,
-      guest_BDetails: bookingDetail.guests?.map((guest, index) => ({
-        detailID: detailID,
-        guestID: `GUEST${Date.now().toString().slice(-4)}_${index}`,
-        guestInfo: index === 0 ? {
-          firstName: guest.firstName,
-          lastName: guest.lastName,
-          email: guest.email,
-          phone: guest.phone,
-          address: guest.address,
-          idCard: guest.idCard,
-          dob: guest.dob,
-          gender: guest.gender
-        } : null
-      })) || [],
-      eService_BDetails: bookingDetail.services?.map(service => ({
-        detailID: detailID,
-        eServiceID: service.id,
-        quantity: service.quantity || 1
-      })) || []
+      guest_BDetails: bookingDetail.guest_BDetails || [], // Sử dụng guest_BDetails từ bookingDetail
+      eService_BDetails: bookingDetail.eService_BDetails || []
     };
     
     const response = await api.post(API_ENDPOINTS.BOOKINGS.DETAILS, bookingDetailPayload);
@@ -159,8 +128,13 @@ export const createBookingDetail = async (bookingDetail) => {
 // Hủy đặt phòng
 export const cancelBooking = async (bookingId) => {
   try {
-    const response = await api.put(API_ENDPOINTS.BOOKINGS.CANCEL(bookingId));
-    return response.data;
+    const booking = await fetchBookingById(bookingId);
+    const updatedBooking = {
+      ...booking,
+      bookingStatus: BOOKING_STATUS.CANCELLED // Cập nhật trạng thái thành CANCELLED
+    };
+    const response = await updateBooking(bookingId, updatedBooking);
+    return response;
   } catch (error) {
     console.error(`Error cancelling booking with id ${bookingId}:`, error);
     throw error;
@@ -194,15 +168,13 @@ export const confirmBooking = async (bookingId) => {
   try {
     const booking = await fetchBookingById(bookingId);
     
-    // Cập nhật trạng thái booking
     const updatedBooking = {
       ...booking,
-      bookingStatus: 'Confirmed'
+      bookingStatus: BOOKING_STATUS.CONFIRMED // Đảm bảo trạng thái là CONFIRMED
     };
     
     const response = await updateBooking(bookingId, updatedBooking);
     
-    // Cập nhật trạng thái phòng
     if (response && response.bookingDetails && response.bookingDetails.length > 0) {
       const roomId = response.bookingDetails[0].roomID;
       await api.put(`${API_ENDPOINTS.ROOMS.BASE}/${roomId}`, {
@@ -218,28 +190,26 @@ export const confirmBooking = async (bookingId) => {
 };
 
 // Check-in khách (Employee)
-export const checkInBooking = async (bookingId, bookingCode) => {
+export const checkInBooking = async (bookingId, checkInCode) => {
   try {
-    // Xác thực mã booking
-    if (bookingCode) {
-      // Kiểm tra mã booking có khớp không
-      const booking = await fetchBookingById(bookingId);
-      if (booking.bookingID !== bookingCode) {
-        throw new Error('Invalid booking code');
-      }
-    }
-    
     const booking = await fetchBookingById(bookingId);
     
-    // Cập nhật trạng thái booking
+    // Kiểm tra mã check-in
+    if (!booking.checkInCode || booking.checkInCode !== checkInCode) {
+      throw new Error('Invalid check-in code');
+    }
+    
+    if (booking.bookingStatus !== BOOKING_STATUS.CONFIRMED) {
+      throw new Error('Booking is not in Confirmed status');
+    }
+    
     const updatedBooking = {
       ...booking,
-      bookingStatus: 'Checked In'
+      bookingStatus: BOOKING_STATUS.CHECKED_IN // Cập nhật trạng thái thành CHECKED_IN
     };
     
     const response = await updateBooking(bookingId, updatedBooking);
     
-    // Cập nhật trạng thái phòng
     if (response && response.bookingDetails && response.bookingDetails.length > 0) {
       const roomId = response.bookingDetails[0].roomID;
       await api.put(`${API_ENDPOINTS.ROOMS.BASE}/${roomId}`, {
@@ -259,15 +229,17 @@ export const checkOutBooking = async (bookingId) => {
   try {
     const booking = await fetchBookingById(bookingId);
     
-    // Cập nhật trạng thái booking
+    if (booking.bookingStatus !== BOOKING_STATUS.CHECKED_IN) {
+      throw new Error('Booking is not in Checked-in status');
+    }
+    
     const updatedBooking = {
       ...booking,
-      bookingStatus: 'Completed'
+      bookingStatus: BOOKING_STATUS.CHECKED_OUT // Cập nhật trạng thái thành CHECKED_OUT
     };
     
     const response = await updateBooking(bookingId, updatedBooking);
     
-    // Cập nhật trạng thái phòng
     if (response && response.bookingDetails && response.bookingDetails.length > 0) {
       const roomId = response.bookingDetails[0].roomID;
       await api.put(`${API_ENDPOINTS.ROOMS.BASE}/${roomId}`, {
@@ -293,6 +265,28 @@ export const fetchBookingsByStatus = async (status) => {
   }
 };
 
+// Lấy tất cả đặt phòng (dành cho Employee)
+export const fetchAllBookings = async () => {
+  try {
+    const response = await api.get(`${API_ENDPOINTS.BOOKINGS.BASE}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching all bookings:', error);
+    throw error;
+  }
+};
+
+// Xóa đặt phòng (dùng để rollback nếu có lỗi)
+export const deleteBooking = async (bookingId) => {
+  try {
+    const response = await api.delete(`${API_ENDPOINTS.BOOKINGS.BASE}/${bookingId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting booking with id ${bookingId}:`, error);
+    throw error;
+  }
+};
+
 // Tạo mã QR cho booking
 export const generateBookingQRCode = async (bookingId) => {
   try {
@@ -300,7 +294,6 @@ export const generateBookingQRCode = async (bookingId) => {
     return response.data;
   } catch (error) {
     console.error(`Error generating QR code for booking ${bookingId}:`, error);
-    // Nếu API không tồn tại, trả về bookingId làm mã QR
     return { qrCode: bookingId };
   }
 };

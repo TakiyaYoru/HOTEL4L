@@ -45,6 +45,7 @@ export const API_ENDPOINTS = {
     BASE: '/payments',
     CARDS: '/paymentcards'
   }
+
 };
 
 // API Error Messages

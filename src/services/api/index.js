@@ -1,4 +1,4 @@
-// Import API modules
+// services/api/index.js
 import * as auth from './auth';
 import * as room from './room';
 import * as booking from './booking';
@@ -6,6 +6,7 @@ import * as payment from './payment';
 import * as customer from './customer';
 import * as employee from './employee';
 import * as service from './service';
+
 
 // Export individual API modules
 export * as authApi from './auth';
@@ -33,7 +34,7 @@ const api = {
   payment,
   customer,
   employee,
-  service
+  service,
 };
 
 export default api;

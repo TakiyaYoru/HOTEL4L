@@ -1,11 +1,11 @@
 // Booking Status
+// services/constants/common.js (giả định)
 export const BOOKING_STATUS = {
-  PENDING: 'pending',
-  CONFIRMED: 'Confirmed',
-  CANCELLED: 'cancelled',
-  COMPLETED: 'Completed',
-  CHECKED_IN: 'Checked In',
-  CHECKED_OUT: 'Checked Out'
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  CHECKED_IN: 'CHECKED_IN',
+  CHECKED_OUT: 'CHECKED_OUT',
+  CANCELLED: 'CANCELLED',
 };
 
 // Payment Methods
