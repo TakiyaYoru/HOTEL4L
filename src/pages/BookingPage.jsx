@@ -282,7 +282,6 @@ function BookingPage() {
         paymentStatus: false,
         paymentID: null,
         customerID: customerID,
-        employeeID: "emp000001",
         paymentMethod: formData.paymentMethod,
         fullName: formData.fullName,
         email: formData.email,

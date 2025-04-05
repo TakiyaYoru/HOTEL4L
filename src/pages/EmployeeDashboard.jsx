@@ -1,128 +1,183 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { FaCheckCircle, FaTimesCircle, FaQrcode, FaSearch, FaSignInAlt, FaSignOutAlt, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
+import styled, { keyframes } from 'styled-components';
 import { services } from '../services';
-import { BOOKING_STATUS, ROOM_STATUS } from '../services/constants/common';
+import { 
+  FaCalendarAlt, 
+  FaCheck, 
+  FaTimes, 
+  FaUser, 
+  FaQrcode, 
+  FaSignOutAlt, 
+  FaSpinner 
+} from 'react-icons/fa';
+import '../styles/EmployeeDashboard.css';
+
+// Animations
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const slideIn = keyframes`
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+`;
 
 // Styled Components
 const DashboardContainer = styled.div`
-  padding: 30px 0;
+  padding: 50px 0;
+  animation: ${fadeIn} 0.5s ease;
 `;
 
 const DashboardHeader = styled.div`
+  margin-bottom: 40px;
+  text-align: center;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 3px;
+    background-color: #b8860b;
+  }
+`;
+
+const DashboardTitle = styled.h1`
+  font-size: 2.8rem;
+  margin-bottom: 10px;
+  color: #333;
+  font-family: 'Playfair Display', serif;
+`;
+
+const EmployeeInfo = styled.div`
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 10px;
   margin-bottom: 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 `;
 
-const DashboardTitle = styled.h1`
-  font-size: 2rem;
-  margin-bottom: 0;
+const EmployeeDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 `;
 
 const DashboardContent = styled.div`
   background-color: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  margin-bottom: 20px;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+  }
 `;
 
 const TabContainer = styled.div`
-  display: flex;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #e0e0e0;
-`;
-
-const Tab = styled.div`
-  padding: 10px 20px;
-  cursor: pointer;
-  font-weight: ${props => props.active ? 'bold' : 'normal'};
-  color: ${props => props.active ? '#007bff' : '#333'};
-  border-bottom: ${props => props.active ? '2px solid #007bff' : 'none'};
-`;
-
-const BookingList = styled.div`
   margin-top: 20px;
 `;
 
-const BookingItem = styled.div`
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
+const TabButtons = styled.div`
   display: flex;
-  justify-content: space-between;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 30px;
+  overflow-x: auto;
+  
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: #b8860b;
+    border-radius: 4px;
+  }
+`;
+
+const TabButton = styled.button`
+  padding: 12px 24px;
+  background-color: ${props => props.$active ? '#b8860b' : 'transparent'};
+  color: ${props => props.$active ? 'white' : '#333'};
+  border: none;
+  border-radius: ${props => props.$active ? '8px 8px 0 0' : '0'};
+  cursor: pointer;
+  font-weight: ${props => props.$active ? '600' : '400'};
+  transition: all 0.3s ease;
+  display: flex;
   align-items: center;
-  background-color: ${props => props.status === BOOKING_STATUS.PENDING ? '#fff8e1' : 
-                              props.status === BOOKING_STATUS.CONFIRMED ? '#e8f5e9' : 
-                              props.status === BOOKING_STATUS.CHECKED_IN ? '#e3f2fd' : 
-                              props.status === BOOKING_STATUS.COMPLETED ? '#f5f5f5' : '#fff'};
+  white-space: nowrap;
+  
+  svg {
+    margin-right: 8px;
+    font-size: 1.1rem;
+  }
+  
+  &:hover {
+    background-color: ${props => props.$active ? '#b8860b' : '#f5f5f5'};
+    transform: translateY(-3px);
+  }
 `;
 
-const BookingInfo = styled.div`
-  flex: 1;
+const TabContent = styled.div`
+  padding: 20px 0;
+  animation: ${fadeIn} 0.4s ease;
 `;
 
-const BookingActions = styled.div`
-  display: flex;
-  gap: 10px;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
+const Th = styled.th`
+  text-align: left;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e0e0e0;
+  color: #555;
+  font-weight: 600;
+`;
+
+const Td = styled.td`
+  padding: 15px;
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s ease;
+  
+  tr:last-child & {
+    border-bottom: none;
+  }
+  
+  tr:hover & {
+    background-color: #f9f9f9;
+  }
 `;
 
 const ActionButton = styled.button`
-  padding: 8px 15px;
+  background-color: transparent;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background-color: ${props => props.primary ? '#007bff' : props.danger ? '#dc3545' : props.success ? '#28a745' : '#6c757d'};
-  color: white;
+  margin-right: 12px;
+  color: ${props => props.danger ? '#e74c3c' : '#3498db'};
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
   
   &:hover {
-    opacity: 0.9;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const SearchBar = styled.div`
-  display: flex;
-  margin-bottom: 20px;
-`;
-
-const SearchInput = styled.input`
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px 0 0 4px;
-  outline: none;
-  
-  &:focus {
-    border-color: #007bff;
-  }
-`;
-
-const SearchButton = styled.button`
-  padding: 10px 15px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 0 4px 4px 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  
-  &:hover {
-    background-color: #0069d9;
+    color: ${props => props.danger ? '#c0392b' : '#2980b9'};
+    transform: scale(1.2);
   }
 `;
 
@@ -141,11 +196,12 @@ const Modal = styled.div`
 
 const ModalContent = styled.div`
   background-color: white;
-  border-radius: 8px;
-  padding: 20px;
-  width: 500px;
+  padding: 30px;
+  border-radius: 10px;
+  width: 400px;
   max-width: 90%;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  animation: ${fadeIn} 0.3s ease;
 `;
 
 const ModalHeader = styled.div`
@@ -153,13 +209,11 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e0e0e0;
 `;
 
-const ModalTitle = styled.h2`
+const ModalTitle = styled.h3`
   margin: 0;
-  font-size: 1.5rem;
+  color: #333;
 `;
 
 const CloseButton = styled.button`
@@ -167,411 +221,366 @@ const CloseButton = styled.button`
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #333;
+  color: #666;
   
   &:hover {
-    color: #007bff;
+    color: #333;
   }
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 `;
 
 const Label = styled.label`
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #444;
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 10px;
+  padding: 12px 15px;
   border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  outline: none;
+  border-radius: 6px;
+  transition: all 0.3s ease;
   
   &:focus {
-    border-color: #007bff;
+    border-color: #b8860b;
+    box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.2);
+    outline: none;
   }
 `;
 
-const ErrorMessage = styled.div`
-  color: #dc3545;
-  margin-top: 10px;
+const SubmitButton = styled.button`
+  padding: 14px 28px;
+  background-color: #b8860b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 5px;
-`;
-
-const SuccessMessage = styled.div`
-  color: #28a745;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-`;
-
-const QRCodeContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 20px 0;
-`;
-
-const QRCodeImage = styled.div`
-  width: 200px;
-  height: 200px;
-  background-color: #f5f5f5;
-  display: flex;
   justify-content: center;
-  align-items: center;
-  margin-bottom: 10px;
-`;
-
-const BookingCode = styled.div`
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-top: 10px;
-  padding: 10px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  text-align: center;
+  width: 100%;
+  
+  svg {
+    margin-right: 8px;
+  }
+  
+  &:hover {
+    background-color: #d4af37;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(184, 134, 11, 0.3);
+  }
+  
+  &:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
 `;
 
 const StatusBadge = styled.span`
-  display: inline-block;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.8rem;
-  font-weight: bold;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  background-color: ${props => {
+    if (props.status === 'Pending') return '#f39c12';
+    if (props.status === 'Confirmed') return '#2ecc71';
+    if (props.status === 'Checked-in') return '#3498db';
+    if (props.status === 'Checked-out') return '#95a5a6';
+    if (props.status === 'Cancelled') return '#e74c3c';
+    return '#95a5a6';
+  }};
   color: white;
-  background-color: ${props => 
-    props.status === BOOKING_STATUS.PENDING ? '#ffc107' : 
-    props.status === BOOKING_STATUS.CONFIRMED ? '#28a745' : 
-    props.status === BOOKING_STATUS.CHECKED_IN ? '#007bff' : 
-    props.status === BOOKING_STATUS.COMPLETED ? '#6c757d' : 
-    props.status === BOOKING_STATUS.CANCELLED ? '#dc3545' : '#6c757d'};
-`;
-
-const RoomStatusBadge = styled.span`
-  display: inline-block;
-  padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: white;
-  background-color: ${props => 
-    props.status === ROOM_STATUS.AVAILABLE ? '#28a745' : 
-    props.status === ROOM_STATUS.BOOKED ? '#ffc107' : 
-    props.status === ROOM_STATUS.OCCUPIED ? '#007bff' : 
-    props.status === ROOM_STATUS.MAINTAINING ? '#dc3545' : 
-    props.status === ROOM_STATUS.FREE ? '#6c757d' : '#6c757d'};
+  
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: white;
+    margin-right: 6px;
+  }
 `;
 
 const LoadingSpinner = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px;
-  
-  svg {
-    animation: spin 1s linear infinite;
-  }
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(184, 134, 11, 0.2);
+  border-radius: 50%;
+  border-top-color: #b8860b;
+  animation: spin 1s ease-in-out infinite;
+  margin: 30px auto;
   
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 
+const ErrorMessage = styled.p`
+  color: #e74c3c;
+  padding: 15px;
+  background-color: #fdf3f2;
+  border-left: 4px solid #e74c3c;
+  border-radius: 4px;
+  margin: 20px 0;
+`;
+
 function EmployeeDashboard() {
-  const { currentUser, isEmployee } = useAuth();
+  const { currentUser, logout, isEmployee } = useAuth();
   const [activeTab, setActiveTab] = useState('pending');
   const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [employee, setEmployee] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [bookingCode, setBookingCode] = useState('');
-  const [checkInError, setCheckInError] = useState(null);
-  const [checkInSuccess, setCheckInSuccess] = useState(false);
-  const [qrCode, setQrCode] = useState(null);
 
-  // Nếu người dùng không phải là employee, chuyển hướng về trang chủ
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState(''); // 'confirmPayment', 'checkIn', 'checkOut', 'cancel'
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [checkInCode, setCheckInCode] = useState('');
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState(null);
+
+  // Fetch employee and bookings data
+// State để lưu trữ booking theo trạng thái
+const [pendingBookings, setPendingBookings] = useState([]);
+const [confirmedBookings, setConfirmedBookings] = useState([]);
+const [checkedInBookings, setCheckedInBookings] = useState([]);
+const [allBookings, setAllBookings] = useState([]);
+
+// Fetch bookings theo trạng thái
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch employee data
+      const employeeData = await services.api.employee.fetchEmployeeById(currentUser.id);
+      setEmployee(employeeData);
+
+      // Fetch bookings theo trạng thái
+      const pendingData = await services.api.booking.fetchBookingsByStatus('Pending');
+      const confirmedData = await services.api.booking.fetchBookingsByStatus('Confirmed');
+      const checkedInData = await services.api.booking.fetchBookingsByStatus('Checked-in');
+      const allData = await services.api.booking.fetchAllBookings();
+
+      // Lọc thêm điều kiện paymentMethod cho Pending Bookings
+      const filteredPending = pendingData.filter(booking => booking.paymentMethod === 'Cash');
+
+      setPendingBookings(filteredPending);
+      setConfirmedBookings(confirmedData);
+      setCheckedInBookings(checkedInData);
+      setAllBookings(allData);
+
+      console.log('Pending Bookings:', filteredPending);
+      console.log('Confirmed Bookings:', confirmedData);
+      console.log('Checked-in Bookings:', checkedInData);
+      console.log('All Bookings:', allData);
+
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please try again later.');
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [currentUser.id]);
+  // Redirect if not an employee
   if (!isEmployee) {
     return <Navigate to="/" />;
   }
 
-  // Lấy danh sách booking theo trạng thái
-  useEffect(() => {
-    const fetchBookings = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        let status;
-        switch (activeTab) {
-          case 'pending':
-            status = BOOKING_STATUS.PENDING;
-            break;
-          case 'confirmed':
-            status = BOOKING_STATUS.CONFIRMED;
-            break;
-          case 'checkedIn':
-            status = BOOKING_STATUS.CHECKED_IN;
-            break;
-          case 'completed':
-            status = BOOKING_STATUS.COMPLETED;
-            break;
-          default:
-            status = BOOKING_STATUS.PENDING;
-        }
-        
-        const data = await services.api.booking.fetchBookingsByStatus(status);
-        setBookings(data || []);
-      } catch (err) {
-        console.error('Error fetching bookings:', err);
-        setError('Failed to load bookings. Please try again.');
-        
-        // Dữ liệu mẫu cho trường hợp API không hoạt động
-        const mockBookings = [
-          {
-            bookingID: 'BOOK12345678',
-            customerID: 'CUST12345',
-            customer: { cName: 'John Doe', phone: '123-4567-8901' },
-            bookingTime: new Date().toISOString(),
-            bookingStatus: status,
-            totalAmount: 200,
-            paymentStatus: true,
-            bookingDetails: [
-              {
-                roomID: 'ROOM101',
-                checkinDate: new Date().toISOString(),
-                checkoutDate: new Date(Date.now() + 86400000 * 2).toISOString(),
-                pricePerDay: 100
-              }
-            ]
-          },
-          {
-            bookingID: 'BOOK87654321',
-            customerID: 'CUST54321',
-            customer: { cName: 'Jane Smith', phone: '987-6543-2109' },
-            bookingTime: new Date().toISOString(),
-            bookingStatus: status,
-            totalAmount: 300,
-            paymentStatus: false,
-            bookingDetails: [
-              {
-                roomID: 'ROOM102',
-                checkinDate: new Date().toISOString(),
-                checkoutDate: new Date(Date.now() + 86400000 * 3).toISOString(),
-                pricePerDay: 100
-              }
-            ]
-          }
-        ];
-        
-        setBookings(mockBookings);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchBookings();
-  }, [activeTab]);
+  // Filter bookings by status
 
-  // Xác nhận booking
-  const handleConfirmBooking = async (bookingId) => {
-    setLoading(true);
-    setError(null);
-    
+
+  // Handle modal actions
+  const openModal = (type, booking) => {
+    setModalType(type);
+    setSelectedBooking(booking);
+    setShowModal(true);
+    setCheckInCode('');
+    setModalError(null);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setModalType('');
+    setSelectedBooking(null);
+    setCheckInCode('');
+    setModalError(null);
+  };
+
+  const handleConfirmPayment = async () => {
     try {
-      await services.api.booking.confirmBooking(bookingId);
-      
-      // Cập nhật danh sách booking
-      setBookings(prevBookings => 
-        prevBookings.filter(booking => booking.bookingID !== bookingId)
-      );
-      
-      // Hiển thị thông báo thành công
-      alert('Booking confirmed successfully!');
+      setModalLoading(true);
+      setModalError(null);
+
+      // Generate check-in code
+      const checkInCode = services.utils.generateCheckInCode();
+
+      // Update booking status to Confirmed
+      await services.api.booking.updateBooking(selectedBooking.bookingID, {
+        ...selectedBooking,
+        bookingStatus: 'Confirmed',
+        paymentStatus: true,
+        checkInCode: checkInCode,
+      });
+
+      // Send confirmation email to customer
+      await services.api.email.sendConfirmationEmail({
+        to: selectedBooking.email,
+        bookingID: selectedBooking.bookingID,
+        checkInCode: checkInCode,
+        checkInDate: selectedBooking.checkInDate,
+        checkOutDate: selectedBooking.checkOutDate,
+        total: selectedBooking.totalAmount,
+      });
+
+      // Refresh bookings
+      const bookingsData = await services.api.booking.fetchBookings();
+      setBookings(bookingsData);
+
+      closeModal();
     } catch (err) {
-      console.error('Error confirming booking:', err);
-      setError('Failed to confirm booking. Please try again.');
+      console.error('Error confirming payment:', err);
+      setModalError('Failed to confirm payment. Please try again.');
     } finally {
-      setLoading(false);
+      setModalLoading(false);
     }
   };
 
-  // Mở modal check-in
-  const handleOpenCheckInModal = (booking) => {
-    setSelectedBooking(booking);
-    setBookingCode('');
-    setCheckInError(null);
-    setCheckInSuccess(false);
-    setShowCheckInModal(true);
-  };
-
-  // Check-in booking
   const handleCheckIn = async () => {
-    if (!selectedBooking) return;
-    
-    setLoading(true);
-    setCheckInError(null);
-    setCheckInSuccess(false);
-    
     try {
-      await services.api.booking.checkInBooking(selectedBooking.bookingID, bookingCode);
-      
-      // Cập nhật danh sách booking
-      setBookings(prevBookings => 
-        prevBookings.filter(booking => booking.bookingID !== selectedBooking.bookingID)
-      );
-      
-      setCheckInSuccess(true);
-      
-      // Đóng modal sau 2 giây
-      setTimeout(() => {
-        setShowCheckInModal(false);
-        setSelectedBooking(null);
-      }, 2000);
+      setModalLoading(true);
+      setModalError(null);
+
+      // Verify check-in code
+      const verification = await services.api.booking.verifyCheckInCode(selectedBooking.bookingID, checkInCode);
+      if (!verification.success) {
+        setModalError('Invalid check-in code. Please try again.');
+        return;
+      }
+
+      // Update booking status to Checked-in
+      await services.api.booking.updateBooking(selectedBooking.bookingID, {
+        ...selectedBooking,
+        bookingStatus: 'Checked-in',
+        checkInTime: new Date().toISOString(),
+      });
+
+      // Refresh bookings
+      const bookingsData = await services.api.booking.fetchBookings();
+      setBookings(bookingsData);
+
+      closeModal();
     } catch (err) {
-      console.error('Error checking in booking:', err);
-      setCheckInError('Invalid booking code. Please try again.');
+      console.error('Error checking in:', err);
+      setModalError('Failed to check in. Please try again.');
     } finally {
-      setLoading(false);
+      setModalLoading(false);
     }
   };
 
-  // Check-out booking
-  const handleCheckOut = async (bookingId) => {
-    setLoading(true);
-    setError(null);
-    
+  const handleCheckOut = async () => {
     try {
-      await services.api.booking.checkOutBooking(bookingId);
-      
-      // Cập nhật danh sách booking
-      setBookings(prevBookings => 
-        prevBookings.filter(booking => booking.bookingID !== bookingId)
-      );
-      
-      // Hiển thị thông báo thành công
-      alert('Check-out successful!');
+      setModalLoading(true);
+      setModalError(null);
+
+      // Update booking status to Checked-out
+      await services.api.booking.updateBooking(selectedBooking.bookingID, {
+        ...selectedBooking,
+        bookingStatus: 'Checked-out',
+        checkOutTime: new Date().toISOString(),
+      });
+
+      // Update room status to Available
+      const roomData = await services.api.room.fetchRoomById(selectedBooking.roomID);
+      await services.api.room.updateRoom(selectedBooking.roomID, {
+        roomID: roomData.roomID,
+        roomStatus: 'Available',
+        rTypeID: roomData.rTypeID,
+      });
+
+      // Send thank you email to customer
+      await services.api.email.sendThankYouEmail({
+        to: selectedBooking.email,
+        bookingID: selectedBooking.bookingID,
+      });
+
+      // Refresh bookings
+      const bookingsData = await services.api.booking.fetchBookings();
+      setBookings(bookingsData);
+
+      closeModal();
     } catch (err) {
-      console.error('Error checking out booking:', err);
-      setError('Failed to check-out. Please try again.');
+      console.error('Error checking out:', err);
+      setModalError('Failed to check out. Please try again.');
     } finally {
-      setLoading(false);
+      setModalLoading(false);
     }
   };
 
-  // Mở modal QR code
-  const handleOpenQRModal = async (booking) => {
-    setSelectedBooking(booking);
-    setQrCode(null);
-    setShowQRModal(true);
-    
+  const handleCancelBooking = async () => {
     try {
-      const qrData = await services.api.booking.generateBookingQRCode(booking.bookingID);
-      setQrCode(qrData.qrCode);
+      setModalLoading(true);
+      setModalError(null);
+
+      // Update booking status to Cancelled
+      await services.api.booking.updateBooking(selectedBooking.bookingID, {
+        ...selectedBooking,
+        bookingStatus: 'Cancelled',
+      });
+
+      // If the room is still booked, set it to Available
+      if (selectedBooking.bookingStatus === 'Pending' || selectedBooking.bookingStatus === 'Confirmed' || selectedBooking.bookingStatus === 'Checked-in') {
+        const roomData = await services.api.room.fetchRoomById(selectedBooking.roomID);
+        await services.api.room.updateRoom(selectedBooking.roomID, {
+          roomID: roomData.roomID,
+          roomStatus: 'Available',
+          rTypeID: roomData.rTypeID,
+        });
+      }
+
+      // Send cancellation email to customer
+      await services.api.email.sendCancellationEmail({
+        to: selectedBooking.email,
+        bookingID: selectedBooking.bookingID,
+      });
+
+      // Refresh bookings
+      const bookingsData = await services.api.booking.fetchBookings();
+      setBookings(bookingsData);
+
+      closeModal();
     } catch (err) {
-      console.error('Error generating QR code:', err);
-      setQrCode(booking.bookingID);
+      console.error('Error cancelling booking:', err);
+      setModalError('Failed to cancel booking. Please try again.');
+    } finally {
+      setModalLoading(false);
     }
   };
 
-  // Tìm kiếm booking
-  const handleSearch = () => {
-    // Implement search functionality
-    console.log('Searching for:', searchTerm);
-  };
-
-  // Render danh sách booking
-  const renderBookings = () => {
-    if (loading) {
-      return (
-        <LoadingSpinner>
-          <FaSpinner size={40} />
-        </LoadingSpinner>
-      );
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Error logging out:', err);
     }
-    
-    if (error) {
-      return (
-        <ErrorMessage>
-          <FaExclamationTriangle /> {error}
-        </ErrorMessage>
-      );
-    }
-    
-    if (bookings.length === 0) {
-      return <p>No bookings found.</p>;
-    }
-    
-    return (
-      <BookingList>
-        {bookings.map(booking => (
-          <BookingItem key={booking.bookingID} status={booking.bookingStatus}>
-            <BookingInfo>
-              <h3>Booking #{booking.bookingID}</h3>
-              <p><strong>Customer:</strong> {booking.customer?.cName}</p>
-              <p><strong>Phone:</strong> {booking.customer?.phone}</p>
-              <p><strong>Check-in:</strong> {new Date(booking.bookingDetails?.[0]?.checkinDate).toLocaleDateString()}</p>
-              <p><strong>Check-out:</strong> {new Date(booking.bookingDetails?.[0]?.checkoutDate).toLocaleDateString()}</p>
-              <p><strong>Room:</strong> {booking.bookingDetails?.[0]?.roomID}</p>
-              <p><strong>Total:</strong> ${booking.totalAmount}</p>
-              <p>
-                <strong>Status:</strong> <StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge>
-              </p>
-              <p>
-                <strong>Payment:</strong> {booking.paymentStatus ? 'Paid' : 'Unpaid'}
-              </p>
-            </BookingInfo>
-            <BookingActions>
-              {activeTab === 'pending' && (
-                <ActionButton 
-                  primary 
-                  onClick={() => handleConfirmBooking(booking.bookingID)}
-                  disabled={loading}
-                >
-                  <FaCheckCircle /> Confirm
-                </ActionButton>
-              )}
-              {activeTab === 'confirmed' && (
-                <>
-                  <ActionButton 
-                    primary 
-                    onClick={() => handleOpenCheckInModal(booking)}
-                    disabled={loading}
-                  >
-                    <FaSignInAlt /> Check-in
-                  </ActionButton>
-                  <ActionButton 
-                    onClick={() => handleOpenQRModal(booking)}
-                    disabled={loading}
-                  >
-                    <FaQrcode /> QR Code
-                  </ActionButton>
-                </>
-              )}
-              {activeTab === 'checkedIn' && (
-                <ActionButton 
-                  success 
-                  onClick={() => handleCheckOut(booking.bookingID)}
-                  disabled={loading}
-                >
-                  <FaSignOutAlt /> Check-out
-                </ActionButton>
-              )}
-            </BookingActions>
-          </BookingItem>
-        ))}
-      </BookingList>
-    );
   };
 
   return (
@@ -579,149 +588,329 @@ function EmployeeDashboard() {
       <DashboardContainer>
         <DashboardHeader>
           <DashboardTitle>Employee Dashboard</DashboardTitle>
-          <p>Welcome, {currentUser?.name || 'Employee'}!</p>
+          <p>Welcome, {employee?.eName || 'Employee'}!</p>
         </DashboardHeader>
+
+        {employee && (
+          <EmployeeInfo>
+            <EmployeeDetails>
+              <p><strong>Employee ID:</strong> {employee.employeeID}</p>
+              <p><strong>Email:</strong> {employee.email}</p>
+              <p><strong>Phone:</strong> {employee.phone}</p>
+              <p><strong>Hire Date:</strong> {new Date(employee.hireDate).toLocaleDateString()}</p>
+            </EmployeeDetails>
+            <ActionButton onClick={handleLogout} danger>
+              <FaSignOutAlt /> Logout
+            </ActionButton>
+          </EmployeeInfo>
+        )}
 
         <DashboardContent>
           <TabContainer>
-            <Tab 
-              active={activeTab === 'pending'} 
-              onClick={() => setActiveTab('pending')}
-            >
-              Pending Bookings
-            </Tab>
-            <Tab 
-              active={activeTab === 'confirmed'} 
-              onClick={() => setActiveTab('confirmed')}
-            >
-              Confirmed Bookings
-            </Tab>
-            <Tab 
-              active={activeTab === 'checkedIn'} 
-              onClick={() => setActiveTab('checkedIn')}
-            >
-              Checked-in Guests
-            </Tab>
-            <Tab 
-              active={activeTab === 'completed'} 
-              onClick={() => setActiveTab('completed')}
-            >
-              Completed Stays
-            </Tab>
-          </TabContainer>
-          
-          <SearchBar>
-            <SearchInput 
-              type="text" 
-              placeholder="Search by booking ID, customer name, or room number..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <SearchButton onClick={handleSearch}>
-              <FaSearch /> Search
-            </SearchButton>
-          </SearchBar>
-          
-          {renderBookings()}
-        </DashboardContent>
-      </DashboardContainer>
-      
-      {/* Check-in Modal */}
-      {showCheckInModal && selectedBooking && (
-        <Modal>
-          <ModalContent>
-            <ModalHeader>
-              <ModalTitle>Check-in Guest</ModalTitle>
-              <CloseButton onClick={() => setShowCheckInModal(false)}>&times;</CloseButton>
-            </ModalHeader>
-            
-            <div>
-              <p><strong>Booking ID:</strong> {selectedBooking.bookingID}</p>
-              <p><strong>Customer:</strong> {selectedBooking.customer?.cName}</p>
-              <p><strong>Room:</strong> {selectedBooking.bookingDetails?.[0]?.roomID}</p>
-              
-              <FormGroup>
-                <Label htmlFor="bookingCode">Enter Booking Code:</Label>
-                <Input 
-                  type="text" 
-                  id="bookingCode" 
-                  value={bookingCode}
-                  onChange={(e) => setBookingCode(e.target.value)}
-                  placeholder="Enter the booking code provided by the guest"
-                />
-              </FormGroup>
-              
-              {checkInError && (
-                <ErrorMessage>
-                  <FaExclamationTriangle /> {checkInError}
-                </ErrorMessage>
-              )}
-              
-              {checkInSuccess && (
-                <SuccessMessage>
-                  <FaCheckCircle /> Check-in successful!
-                </SuccessMessage>
-              )}
-              
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <ActionButton onClick={() => setShowCheckInModal(false)}>
-                  Cancel
-                </ActionButton>
-                <ActionButton 
-                  primary 
-                  onClick={handleCheckIn}
-                  disabled={loading || !bookingCode}
-                >
-                  {loading ? <FaSpinner /> : <FaSignInAlt />} Check-in
-                </ActionButton>
-              </div>
-            </div>
-          </ModalContent>
-        </Modal>
-      )}
-      
-      {/* QR Code Modal */}
-      {showQRModal && selectedBooking && (
-        <Modal>
-          <ModalContent>
-            <ModalHeader>
-              <ModalTitle>Booking QR Code</ModalTitle>
-              <CloseButton onClick={() => setShowQRModal(false)}>&times;</CloseButton>
-            </ModalHeader>
-            
-            <div>
-              <p><strong>Booking ID:</strong> {selectedBooking.bookingID}</p>
-              <p><strong>Customer:</strong> {selectedBooking.customer?.cName}</p>
-              
-              <QRCodeContainer>
-                <QRCodeImage>
-                  {qrCode ? (
-                    <FaQrcode size={150} />
-                  ) : (
-                    <FaSpinner size={40} />
-                  )}
-                </QRCodeImage>
-                
-                {qrCode && (
-                  <BookingCode>
-                    {qrCode}
-                  </BookingCode>
+            <TabButtons>
+              <TabButton 
+                $active={activeTab === 'pending'} 
+                onClick={() => setActiveTab('pending')}
+              >
+                <FaCalendarAlt /> Pending Payment
+              </TabButton>
+              <TabButton 
+                $active={activeTab === 'confirmed'} 
+                onClick={() => setActiveTab('confirmed')}
+              >
+                <FaCheck /> Confirmed Payment
+              </TabButton>
+              <TabButton 
+                $active={activeTab === 'checkedIn'} 
+                onClick={() => setActiveTab('checkedIn')}
+              >
+                <FaUser /> Checked-in Bookings
+              </TabButton>
+              <TabButton 
+                $active={activeTab === 'all'} 
+                onClick={() => setActiveTab('all')}
+              >
+                <FaCalendarAlt /> All Bookings
+              </TabButton>
+            </TabButtons>
+
+            {activeTab === 'pending' && (
+              <TabContent>
+                <h3>Pending Payment (Cash Payments)</h3>
+                {loading ? (
+                  <LoadingSpinner />
+                ) : error ? (
+                  <ErrorMessage>{error}</ErrorMessage>
+                ) : pendingBookings.length === 0 ? (
+                  <p>No pending bookings found.</p>
+                ) : (
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Booking ID</Th>
+                        <Th>Customer</Th>
+                        <Th>Room ID</Th>
+                        <Th>Check-in Date</Th>
+                        <Th>Check-out Date</Th>
+                        <Th>Payment Method</Th>
+                        <Th>Status</Th>
+                        <Th>Actions</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingBookings.map(booking => (
+                        <tr key={booking.bookingID}>
+                          <Td>{booking.bookingID}</Td>
+                          <Td>{booking.fullName}</Td>
+                          <Td>{booking.roomID}</Td>
+                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
+                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
+                          <Td>{booking.paymentMethod}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
+                          <Td>
+                            <ActionButton onClick={() => openModal('confirmPayment', booking)}>
+                              <FaCheck /> Confirm Payment
+                            </ActionButton>
+                            <ActionButton danger onClick={() => openModal('cancel', booking)}>
+                              <FaTimes /> Cancel
+                            </ActionButton>
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
                 )}
-              </QRCodeContainer>
-              
-              <p style={{ textAlign: 'center' }}>
-                Show this QR code to the guest for check-in.
-              </p>
-              
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-                <ActionButton onClick={() => setShowQRModal(false)}>
-                  Close
-                </ActionButton>
-              </div>
-            </div>
-          </ModalContent>
-        </Modal>
-      )}
+              </TabContent>
+            )}
+
+            {activeTab === 'confirmed' && (
+              <TabContent>
+                <h3>Confirmed Bookings (Awaiting Check-in)</h3>
+                {loading ? (
+                  <LoadingSpinner />
+                ) : error ? (
+                  <ErrorMessage>{error}</ErrorMessage>
+                ) : confirmedBookings.length === 0 ? (
+                  <p>No confirmed bookings found.</p>
+                ) : (
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Booking ID</Th>
+                        <Th>Customer</Th>
+                        <Th>Room ID</Th>
+                        <Th>Check-in Date</Th>
+                        <Th>Check-out Date</Th>
+                        <Th>Payment Method</Th>
+                        <Th>Status</Th>
+                        <Th>Actions</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {confirmedBookings.map(booking => (
+                        <tr key={booking.bookingID}>
+                          <Td>{booking.bookingID}</Td>
+                          <Td>{booking.fullName}</Td>
+                          <Td>{booking.roomID}</Td>
+                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
+                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
+                          <Td>{booking.paymentMethod}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
+                          <Td>
+                            <ActionButton onClick={() => openModal('checkIn', booking)}>
+                              <FaQrcode /> Check-in
+                            </ActionButton>
+                            <ActionButton danger onClick={() => openModal('cancel', booking)}>
+                              <FaTimes /> Cancel
+                            </ActionButton>
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </TabContent>
+            )}
+
+            {activeTab === 'checkedIn' && (
+              <TabContent>
+                <h3>Checked-in Bookings (Awaiting Check-out)</h3>
+                {loading ? (
+                  <LoadingSpinner />
+                ) : error ? (
+                  <ErrorMessage>{error}</ErrorMessage>
+                ) : checkedInBookings.length === 0 ? (
+                  <p>No checked-in bookings found.</p>
+                ) : (
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Booking ID</Th>
+                        <Th>Customer</Th>
+                        <Th>Room ID</Th>
+                        <Th>Check-in Date</Th>
+                        <Th>Check-out Date</Th>
+                        <Th>Payment Method</Th>
+                        <Th>Status</Th>
+                        <Th>Actions</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {checkedInBookings.map(booking => (
+                        <tr key={booking.bookingID}>
+                          <Td>{booking.bookingID}</Td>
+                          <Td>{booking.fullName}</Td>
+                          <Td>{booking.roomID}</Td>
+                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
+                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
+                          <Td>{booking.paymentMethod}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
+                          <Td>
+                            <ActionButton onClick={() => openModal('checkOut', booking)}>
+                              <FaSignOutAlt /> Check-out
+                            </ActionButton>
+                            <ActionButton danger onClick={() => openModal('cancel', booking)}>
+                              <FaTimes /> Cancel
+                            </ActionButton>
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </TabContent>
+            )}
+
+            {activeTab === 'all' && (
+              <TabContent>
+                <h3>All Bookings</h3>
+                {loading ? (
+                  <LoadingSpinner />
+                ) : error ? (
+                  <ErrorMessage>{error}</ErrorMessage>
+                ) : allBookings.length === 0 ? (
+                  <p>No bookings found.</p>
+                ) : (
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Booking ID</Th>
+                        <Th>Customer</Th>
+                        <Th>Room ID</Th>
+                        <Th>Check-in Date</Th>
+                        <Th>Check-out Date</Th>
+                        <Th>Payment Method</Th>
+                        <Th>Status</Th>
+                        <Th>Actions</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allBookings.map(booking => (
+                        <tr key={booking.bookingID}>
+                          <Td>{booking.bookingID}</Td>
+                          <Td>{booking.fullName}</Td>
+                          <Td>{booking.roomID}</Td>
+                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
+                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
+                          <Td>{booking.paymentMethod}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
+                          <Td>
+                            {booking.bookingStatus === 'Pending' && booking.paymentMethod === 'Cash' && (
+                              <ActionButton onClick={() => openModal('confirmPayment', booking)}>
+                                <FaCheck /> Confirm Payment
+                              </ActionButton>
+                            )}
+                            {booking.bookingStatus === 'Confirmed' && (
+                              <ActionButton onClick={() => openModal('checkIn', booking)}>
+                                <FaQrcode /> Check-in
+                              </ActionButton>
+                            )}
+                            {booking.bookingStatus === 'Checked-in' && (
+                              <ActionButton onClick={() => openModal('checkOut', booking)}>
+                                <FaSignOutAlt /> Check-out
+                              </ActionButton>
+                            )}
+                            {booking.bookingStatus !== 'Checked-out' && booking.bookingStatus !== 'Cancelled' && (
+                              <ActionButton danger onClick={() => openModal('cancel', booking)}>
+                                <FaTimes /> Cancel
+                              </ActionButton>
+                            )}
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </TabContent>
+            )}
+          </TabContainer>
+        </DashboardContent>
+
+        {/* Modal for actions */}
+        {showModal && (
+          <Modal>
+            <ModalContent>
+              <ModalHeader>
+                <ModalTitle>
+                  {modalType === 'confirmPayment' && 'Confirm Payment'}
+                  {modalType === 'checkIn' && 'Check-in Customer'}
+                  {modalType === 'checkOut' && 'Check-out Customer'}
+                  {modalType === 'cancel' && 'Cancel Booking'}
+                </ModalTitle>
+                <CloseButton onClick={closeModal}><FaTimes /></CloseButton>
+              </ModalHeader>
+
+              {modalError && <ErrorMessage>{modalError}</ErrorMessage>}
+
+              {modalType === 'confirmPayment' && (
+                <div>
+                  <p>Confirm that the customer has paid for booking <strong>{selectedBooking.bookingID}</strong> in cash.</p>
+                  <SubmitButton onClick={handleConfirmPayment} disabled={modalLoading}>
+                    {modalLoading ? <FaSpinner className="spinner" /> : <FaCheck />} Confirm Payment
+                  </SubmitButton>
+                </div>
+              )}
+
+              {modalType === 'checkIn' && (
+                <div>
+                  <FormGroup>
+                    <Label htmlFor="checkInCode">Check-in Code</Label>
+                    <Input
+                      type="text"
+                      id="checkInCode"
+                      value={checkInCode}
+                      onChange={(e) => setCheckInCode(e.target.value)}
+                      placeholder="Enter check-in code"
+                      required
+                    />
+                  </FormGroup>
+                  <SubmitButton onClick={handleCheckIn} disabled={modalLoading || !checkInCode}>
+                    {modalLoading ? <FaSpinner className="spinner" /> : <FaQrcode />} Verify and Check-in
+                  </SubmitButton>
+                </div>
+              )}
+
+              {modalType === 'checkOut' && (
+                <div>
+                  <p>Confirm that the customer for booking <strong>{selectedBooking.bookingID}</strong> has checked out.</p>
+                  <SubmitButton onClick={handleCheckOut} disabled={modalLoading}>
+                    {modalLoading ? <FaSpinner className="spinner" /> : <FaSignOutAlt />} Confirm Check-out
+                  </SubmitButton>
+                </div>
+              )}
+
+              {modalType === 'cancel' && (
+                <div>
+                  <p>Are you sure you want to cancel booking <strong>{selectedBooking.bookingID}</strong>?</p>
+                  <SubmitButton onClick={handleCancelBooking} disabled={modalLoading}>
+                    {modalLoading ? <FaSpinner className="spinner" /> : <FaTimes />} Cancel Booking
+                  </SubmitButton>
+                </div>
+              )}
+            </ModalContent>
+          </Modal>
+        )}
+      </DashboardContainer>
     </div>
   );
 }
