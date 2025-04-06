@@ -68,7 +68,7 @@ function ProfilePage() {
     // Lưu thông tin thanh toán vào localStorage
     localStorage.setItem('paymentData', JSON.stringify(paymentData));
   
-    setSuccessMessage('Payment method updated successfully!');
+    setSuccessMessage('Cập nhật phương thức thanh toán thành công!');
     setEditMode(false);
   
     // Clear success message after 3 seconds
@@ -77,13 +77,14 @@ function ProfilePage() {
     }, 3000);
   };  
   
-// Tải lại thông tin thẻ tín dụng từ localStorage khi component mount
-useEffect(() => {
-  const storedPaymentData = localStorage.getItem('paymentData');
-  if (storedPaymentData) {
-    setPaymentData(JSON.parse(storedPaymentData));
-  }
-}, []);
+  // Tải lại thông tin thẻ tín dụng từ localStorage khi component mount
+  useEffect(() => {
+    const storedPaymentData = localStorage.getItem('paymentData');
+    if (storedPaymentData) {
+      setPaymentData(JSON.parse(storedPaymentData));
+    }
+  }, []);
+
   // Password change states
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -95,7 +96,7 @@ useEffect(() => {
   const [bookings, setBookings] = useState([
     {
       id: 'b001',
-      roomName: 'Deluxe Room',
+      roomName: 'Phòng Cao Cấp',
       checkIn: '2025-04-15',
       checkOut: '2025-04-18',
       guests: 2,
@@ -106,7 +107,7 @@ useEffect(() => {
     },
     {
       id: 'b002',
-      roomName: 'Executive Suite',
+      roomName: 'Căn Hộ Hạng Sang',
       checkIn: '2025-05-20',
       checkOut: '2025-05-25',
       guests: 2,
@@ -121,19 +122,19 @@ useEffect(() => {
   const [favorites, setFavorites] = useState([
     {
       id: 'r001',
-      name: 'Ocean View Room',
+      name: 'Phòng Hướng Biển',
       price: 180,
       image: '/images/Rooms/ocean-view-room-1.jpg'
     },
     {
       id: 'r002',
-      name: 'Presidential Suite',
+      name: 'Căn Hộ Tổng Thống',
       price: 350,
       image: '/images/Rooms/presidential-suite-1.jpg'
     },
     {
       id: 'r003',
-      name: 'Family Room',
+      name: 'Phòng Gia Đình',
       price: 200,
       image: '/images/Rooms/family-room-1.jpg'
     }
@@ -143,23 +144,23 @@ useEffect(() => {
   const [notifications, setNotifications] = useState([
     {
       id: 'n001',
-      title: 'Booking Confirmed',
-      message: 'Your booking for Deluxe Room has been confirmed.',
-      time: '2 days ago',
+      title: 'Xác Nhận Đặt Phòng',
+      message: 'Đặt phòng của bạn cho Phòng Cao Cấp đã được xác nhận.',
+      time: '2 ngày trước',
       read: true
     },
     {
       id: 'n002',
-      title: 'Special Offer',
-      message: 'Get 20% off on your next booking with code SUMMER20.',
-      time: '1 week ago',
+      title: 'Ưu Đãi Đặc Biệt',
+      message: 'Nhận 20% giảm giá cho lần đặt phòng tiếp theo với mã SUMMER20.',
+      time: '1 tuần trước',
       read: false
     },
     {
       id: 'n003',
-      title: 'Upcoming Stay',
-      message: 'Your stay at our hotel is coming up in 3 days. We look forward to welcoming you!',
-      time: 'Just now',
+      title: 'Kỳ Nghỉ Sắp Tới',
+      message: 'Kỳ nghỉ của bạn tại khách sạn của chúng tôi sẽ bắt đầu sau 3 ngày. Chúng tôi rất mong được chào đón bạn!',
+      time: 'Vừa xong',
       read: false
     }
   ]);
@@ -177,12 +178,12 @@ useEffect(() => {
           lastName: currentUser.name?.split(' ')[1] || '',
           email: currentUser.email || '',
           phone: '+1 234 567 8900',
-          address: '123 Main Street',
-          city: 'New York',
-          country: 'United States',
+          address: '123 Đường Chính',
+          city: 'Hà Nội',
+          country: 'Việt Nam',
           birthdate: '1990-01-01',
-          gender: 'Male',
-          bio: 'I love traveling and experiencing luxury hotels around the world.'
+          gender: 'Nam',
+          bio: 'Tôi yêu thích du lịch và trải nghiệm các khách sạn sang trọng trên khắp thế giới.'
         });
       }
     }
@@ -209,7 +210,7 @@ useEffect(() => {
     // Lưu thông tin đã chỉnh sửa vào localStorage
     localStorage.setItem('userData', JSON.stringify(formData));
   
-    setSuccessMessage('Profile updated successfully!');
+    setSuccessMessage('Cập nhật hồ sơ thành công!');
     setEditMode(false);
   
     // Clear success message after 3 seconds
@@ -223,12 +224,12 @@ useEffect(() => {
     
     // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setErrorMessage('New passwords do not match');
+      setErrorMessage('Mật khẩu mới không khớp');
       return;
     }
     
     // In a real app, you would send the password change request to an API
-    setSuccessMessage('Password changed successfully!');
+    setSuccessMessage('Đổi mật khẩu thành công!');
     setPasswordData({
       currentPassword: '',
       newPassword: '',
@@ -272,7 +273,7 @@ useEffect(() => {
   
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return new Date(dateString).toLocaleDateString('vi-VN', options);
   };
   
   // Get user's first initial for avatar
@@ -283,7 +284,7 @@ useEffect(() => {
     if (formData.firstName) {
       return formData.firstName.charAt(0).toUpperCase();
     }
-    return 'U';
+    return 'N';
   };
   
   // Get role display name
@@ -292,13 +293,13 @@ useEffect(() => {
     
     switch (currentUser.role) {
       case 'admin':
-        return 'Administrator';
+        return 'Quản Trị Viên';
       case 'employee':
-        return 'Employee';
+        return 'Nhân Viên';
       case 'customer':
-        return 'Customer';
+        return 'Khách Hàng';
       default:
-        return 'User';
+        return 'Người Dùng';
     }
   };
   
@@ -306,8 +307,8 @@ useEffect(() => {
     <div className="container">
       <div className="profile-container">
         <div className="profile-header">
-          <h1 className="profile-title">My Profile</h1>
-          <p className="profile-subtitle">Manage your account settings and preferences</p>
+          <h1 className="profile-title">Hồ Sơ Của Tôi</h1>
+          <p className="profile-subtitle">Quản lý cài đặt và tùy chọn tài khoản của bạn</p>
         </div>
         
         {successMessage && (
@@ -335,7 +336,7 @@ useEffect(() => {
               )}
               <label className="avatar-upload">
                 <input type="file" accept="image/*" />
-                <FaCamera /> Change Photo
+                <FaCamera /> Đổi Ảnh
               </label>
             </div>
             
@@ -352,7 +353,7 @@ useEffect(() => {
                 onClick={() => setActiveTab('personal')}
               >
                 <FaUser />
-                Personal Information
+                Thông Tin Cá Nhân
               </div>
               
               <div 
@@ -360,15 +361,15 @@ useEffect(() => {
                 onClick={() => setActiveTab('security')}
               >
                 <FaLock />
-                Security
+                Bảo Mật
               </div>
+              
               <div 
-
                 className={`profile-menu-item ${activeTab === 'payment' ? 'active' : ''}`}
                 onClick={() => setActiveTab('payment')}
               >
                 <FaDollarSign />
-                Payment Method
+                Phương Thức Thanh Toán
               </div>
 
               <div 
@@ -376,7 +377,7 @@ useEffect(() => {
                 onClick={() => setActiveTab('bookings')}
               >
                 <FaHistory />
-                My Bookings
+                Đặt Phòng Của Tôi
               </div>
               
               <div 
@@ -384,7 +385,7 @@ useEffect(() => {
                 onClick={() => setActiveTab('favorites')}
               >
                 <FaHeart />
-                Favorites
+                Yêu Thích
               </div>
               
               <div 
@@ -392,7 +393,7 @@ useEffect(() => {
                 onClick={() => setActiveTab('notifications')}
               >
                 <FaBell />
-                Notifications
+                Thông Báo
                 {notifications.filter(n => !n.read).length > 0 && (
                   <span className="notification-badge">{notifications.filter(n => !n.read).length}</span>
                 )}
@@ -403,7 +404,7 @@ useEffect(() => {
                 onClick={() => setActiveTab('settings')}
               >
                 <FaCog />
-                Account Settings
+                Cài Đặt Tài Khoản
               </div>
               
               <div 
@@ -411,7 +412,7 @@ useEffect(() => {
                 onClick={logout}
               >
                 <FaSignOutAlt />
-                Logout
+                Đăng Xuất
               </div>
             </div>
           </div>
@@ -422,17 +423,17 @@ useEffect(() => {
             {activeTab === 'personal' && (
               <div className="profile-section">
                 <div className="profile-section-title">
-                  <h2>Personal Information</h2>
+                  <h2>Thông Tin Cá Nhân</h2>
                   <button onClick={() => setEditMode(!editMode)}>
                     <FaEdit />
-                    {editMode ? 'Cancel' : 'Edit'}
+                    {editMode ? 'Hủy' : 'Chỉnh Sửa'}
                   </button>
                 </div>
                 
                 {editMode ? (
                   <form className="profile-form" onSubmit={handleSaveProfile}>
                     <div className="form-group">
-                      <label htmlFor="firstName">First Name</label>
+                      <label htmlFor="firstName">Tên</label>
                       <input
                         type="text"
                         id="firstName"
@@ -444,7 +445,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="lastName">Last Name</label>
+                      <label htmlFor="lastName">Họ</label>
                       <input
                         type="text"
                         id="lastName"
@@ -469,7 +470,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="phone">Phone</label>
+                      <label htmlFor="phone">Số Điện Thoại</label>
                       <input
                         type="tel"
                         id="phone"
@@ -480,7 +481,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="birthdate">Date of Birth</label>
+                      <label htmlFor="birthdate">Ngày Sinh</label>
                       <input
                         type="date"
                         id="birthdate"
@@ -491,23 +492,23 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="gender">Gender</label>
+                      <label htmlFor="gender">Giới Tính</label>
                       <select
                         id="gender"
                         name="gender"
                         value={formData.gender}
                         onChange={handleInputChange}
                       >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
+                        <option value="">Chọn Giới Tính</option>
+                        <option value="Nam">Nam</option>
+                        <option value="Nữ">Nữ</option>
+                        <option value="Khác">Khác</option>
+                        <option value="Không muốn tiết lộ">Không muốn tiết lộ</option>
                       </select>
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="address">Address</label>
+                      <label htmlFor="address">Địa Chỉ</label>
                       <input
                         type="text"
                         id="address"
@@ -518,7 +519,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="city">City</label>
+                      <label htmlFor="city">Thành Phố</label>
                       <input
                         type="text"
                         id="city"
@@ -529,7 +530,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="country">Country</label>
+                      <label htmlFor="country">Quốc Gia</label>
                       <input
                         type="text"
                         id="country"
@@ -540,7 +541,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group full-width">
-                      <label htmlFor="bio">Bio</label>
+                      <label htmlFor="bio">Tiểu Sử</label>
                       <textarea
                         id="bio"
                         name="bio"
@@ -551,10 +552,10 @@ useEffect(() => {
                     
                     <div className="form-actions">
                       <button type="button" className="btn btn-secondary" onClick={() => setEditMode(false)}>
-                        Cancel
+                        Hủy
                       </button>
                       <button type="submit" className="btn btn-primary">
-                        Save Changes
+                        Lưu Thay Đổi
                       </button>
                     </div>
                   </form>
@@ -562,12 +563,12 @@ useEffect(() => {
                   <div className="profile-info">
                     <div className="profile-form">
                       <div className="form-group">
-                        <label>First Name</label>
+                        <label>Tên</label>
                         <p>{formData.firstName}</p>
                       </div>
                       
                       <div className="form-group">
-                        <label>Last Name</label>
+                        <label>Họ</label>
                         <p>{formData.lastName}</p>
                       </div>
                       
@@ -577,38 +578,38 @@ useEffect(() => {
                       </div>
                       
                       <div className="form-group">
-                        <label>Phone</label>
+                        <label>Số Điện Thoại</label>
                         <p>{formData.phone}</p>
                       </div>
                       
                       <div className="form-group">
-                        <label>Date of Birth</label>
-                        <p>{formData.birthdate ? formatDate(formData.birthdate) : 'Not provided'}</p>
+                        <label>Ngày Sinh</label>
+                        <p>{formData.birthdate ? formatDate(formData.birthdate) : 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="form-group">
-                        <label>Gender</label>
-                        <p>{formData.gender || 'Not provided'}</p>
+                        <label>Giới Tính</label>
+                        <p>{formData.gender || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="form-group">
-                        <label>Address</label>
-                        <p>{formData.address || 'Not provided'}</p>
+                        <label>Địa Chỉ</label>
+                        <p>{formData.address || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="form-group">
-                        <label>City</label>
-                        <p>{formData.city || 'Not provided'}</p>
+                        <label>Thành Phố</label>
+                        <p>{formData.city || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="form-group">
-                        <label>Country</label>
-                        <p>{formData.country || 'Not provided'}</p>
+                        <label>Quốc Gia</label>
+                        <p>{formData.country || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="form-group full-width">
-                        <label>Bio</label>
-                        <p>{formData.bio || 'Not provided'}</p>
+                        <label>Tiểu Sử</label>
+                        <p>{formData.bio || 'Chưa cung cấp'}</p>
                       </div>
                     </div>
                   </div>
@@ -620,18 +621,18 @@ useEffect(() => {
             {activeTab === 'security' && (
               <div className="profile-section">
                 <div className="profile-section-title">
-                  <h2>Security</h2>
+                  <h2>Bảo Mật</h2>
                 </div>
                 
                 <div className="security-section">
-                  <h3 className="security-title">Change Password</h3>
+                  <h3 className="security-title">Đổi Mật Khẩu</h3>
                   <p className="security-description">
-                    Ensure your account is using a strong password for better security.
+                    Đảm bảo tài khoản của bạn sử dụng mật khẩu mạnh để bảo mật tốt hơn.
                   </p>
                   
                   <form className="profile-form" onSubmit={handleChangePassword}>
                     <div className="form-group full-width">
-                      <label htmlFor="currentPassword">Current Password</label>
+                      <label htmlFor="currentPassword">Mật Khẩu Hiện Tại</label>
                       <input
                         type="password"
                         id="currentPassword"
@@ -643,7 +644,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="newPassword">New Password</label>
+                      <label htmlFor="newPassword">Mật Khẩu Mới</label>
                       <input
                         type="password"
                         id="newPassword"
@@ -655,7 +656,7 @@ useEffect(() => {
                     </div>
                     
                     <div className="form-group">
-                      <label htmlFor="confirmPassword">Confirm New Password</label>
+                      <label htmlFor="confirmPassword">Xác Nhận Mật Khẩu Mới</label>
                       <input
                         type="password"
                         id="confirmPassword"
@@ -668,23 +669,23 @@ useEffect(() => {
                     
                     <div className="form-actions">
                       <button type="submit" className="btn btn-primary">
-                        Change Password
+                        Đổi Mật Khẩu
                       </button>
                     </div>
                   </form>
                 </div>
                 
                 <div className="security-section">
-                  <h3 className="security-title">Account Activity</h3>
+                  <h3 className="security-title">Hoạt Động Tài Khoản</h3>
                   <p className="security-description">
-                    Monitor and manage your account activity for security purposes.
+                    Theo dõi và quản lý hoạt động tài khoản của bạn vì mục đích bảo mật.
                   </p>
                   
                   <div className="activity-list">
                     <div className="activity-item">
-                      <p><strong>Last login:</strong> Today at 2:30 PM</p>
-                      <p><strong>Device:</strong> Chrome on Windows</p>
-                      <p><strong>Location:</strong> New York, United States</p>
+                      <p><strong>Lần đăng nhập cuối:</strong> Hôm nay lúc 14:30</p>
+                      <p><strong>Thiết bị:</strong> Chrome trên Windows</p>
+                      <p><strong>Vị trí:</strong> Hà Nội, Việt Nam</p>
                     </div>
                   </div>
                 </div>
@@ -693,147 +694,147 @@ useEffect(() => {
 
             {/* Payment Tab */}
             {activeTab === 'payment' && (
-            <div className="profile-section">
-              <div className="profile-section-title">
-                <h2>Payment Method</h2>
-                <button onClick={() => setEditMode(!editMode)}>
-                  <FaEdit />
-                  {editMode ? 'Cancel' : 'Edit'}
-                </button>
-              </div>
+              <div className="profile-section">
+                <div className="profile-section-title">
+                  <h2>Phương Thức Thanh Toán</h2>
+                  <button onClick={() => setEditMode(!editMode)}>
+                    <FaEdit />
+                    {editMode ? 'Hủy' : 'Chỉnh Sửa'}
+                  </button>
+                </div>
 
-              {editMode ? (
-                <form className="profile-form" onSubmit={handleSavePayment}>
-                  <div className="form-group">
-                    <label htmlFor="cardType">Card Type</label>
-                    <div className="card-type-selector">
-                      <select
-                        id="cardType"
-                        name="cardType"
-                        value={paymentData.cardType}
+                {editMode ? (
+                  <form className="profile-form" onSubmit={handleSavePayment}>
+                    <div className="form-group">
+                      <label htmlFor="cardType">Loại Thẻ</label>
+                      <div className="card-type-selector">
+                        <select
+                          id="cardType"
+                          name="cardType"
+                          value={paymentData.cardType}
+                          onChange={handlePaymentChange}
+                          required
+                        >
+                          <option value="">Chọn Loại Thẻ</option>
+                          <option value="Visa">Visa</option>
+                          <option value="MasterCard">MasterCard</option>
+                          <option value="PayPal">PayPal</option>
+                        </select>
+
+                        {/* Hiển thị icon của thẻ đã chọn */}
+                        {paymentData.cardType && (
+                          <img 
+                            src={
+                              paymentData.cardType === 'Visa' ? visaIcon :
+                              paymentData.cardType === 'MasterCard' ? masterCardIcon :
+                              paymentData.cardType === 'PayPal' ? paypalIcon : ''
+                            }
+                            alt={paymentData.cardType}
+                            className="card-icon"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="cardNumber">Số Thẻ</label>
+                      <input
+                        type="text"
+                        id="cardNumber"
+                        name="cardNumber"
+                        value={paymentData.cardNumber}
                         onChange={handlePaymentChange}
                         required
-                      >
-                        <option value="">Select Card Type</option>
-                        <option value="Visa">Visa</option>
-                        <option value="MasterCard">MasterCard</option>
-                        <option value="PayPal">PayPal</option>
-                      </select>
+                        placeholder="1234 5678 9876 5432"
+                      />
+                    </div>
 
-                      {/* Hiển thị icon của thẻ đã chọn */}
-                      {paymentData.cardType && (
-                        <img 
-                          src={
-                            paymentData.cardType === 'Visa' ? visaIcon :
-                            paymentData.cardType === 'MasterCard' ? masterCardIcon :
-                            paymentData.cardType === 'PayPal' ? paypalIcon : ''
-                          }
-                          alt={paymentData.cardType}
-                          className="card-icon"
-                        />
-                      )}
+                    <div className="form-group">
+                      <label htmlFor="expiryDate">Ngày Hết Hạn</label>
+                      <input
+                        type="month"
+                        id="expiryDate"
+                        name="expiryDate"
+                        value={paymentData.expiryDate}
+                        onChange={handlePaymentChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="cvv">CVV</label>
+                      <input
+                        type="text"
+                        id="cvv"
+                        name="cvv"
+                        value={paymentData.cvv}
+                        onChange={handlePaymentChange}
+                        required
+                        placeholder="123"
+                      />
+                    </div>
+
+                    <div className="form-actions">
+                      <button type="button" className="btn btn-secondary" onClick={() => setEditMode(false)}>
+                        Hủy
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        Lưu Thay Đổi
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="payment-info">
+                    <div className="form-group">
+                      <label>Loại Thẻ</label>
+                      <div className="card-type-container">
+                        <p>{paymentData.cardType || 'Chưa cung cấp'}</p>
+                        
+                        {/* Hiển thị icon của thẻ đã chọn */}
+                        {paymentData.cardType && (
+                          <img 
+                            src={
+                              paymentData.cardType === 'Visa' ? visaIcon :
+                              paymentData.cardType === 'MasterCard' ? masterCardIcon :
+                              paymentData.cardType === 'PayPal' ? paypalIcon : ''
+                            }
+                            alt={paymentData.cardType}
+                            className="card-icon"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Số Thẻ</label>
+                      <p>{paymentData.cardNumber ? paymentData.cardNumber.replace(/\d{4}(?=\d)/g, '**** ') : 'Chưa cung cấp'}</p>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Ngày Hết Hạn</label>
+                      <p>{paymentData.expiryDate || 'Chưa cung cấp'}</p>
+                    </div>
+
+                    <div className="form-group">
+                      <label>CVV</label>
+                      <p>{paymentData.cvv ? '***' : 'Chưa cung cấp'}</p>
                     </div>
                   </div>
-
-                  <div className="form-group">
-                    <label htmlFor="cardNumber">Card Number</label>
-                    <input
-                      type="text"
-                      id="cardNumber"
-                      name="cardNumber"
-                      value={paymentData.cardNumber}
-                      onChange={handlePaymentChange}
-                      required
-                      placeholder="1234 5678 9876 5432"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="expiryDate">Expiry Date</label>
-                    <input
-                      type="month"
-                      id="expiryDate"
-                      name="expiryDate"
-                      value={paymentData.expiryDate}
-                      onChange={handlePaymentChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="cvv">CVV</label>
-                    <input
-                      type="text"
-                      id="cvv"
-                      name="cvv"
-                      value={paymentData.cvv}
-                      onChange={handlePaymentChange}
-                      required
-                      placeholder="123"
-                    />
-                  </div>
-
-                  <div className="form-actions">
-                    <button type="button" className="btn btn-secondary" onClick={() => setEditMode(false)}>
-                      Cancel
-                    </button>
-                    <button type="submit" className="btn btn-primary">
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="payment-info">
-                <div className="form-group">
-                  <label>Card Type</label>
-                  <div className="card-type-container">
-                    <p>{paymentData.cardType || 'Not provided'}</p>
-                    
-                    {/* Hiển thị icon của thẻ đã chọn */}
-                    {paymentData.cardType && (
-                      <img 
-                        src={
-                          paymentData.cardType === 'Visa' ? visaIcon :
-                          paymentData.cardType === 'MasterCard' ? masterCardIcon :
-                          paymentData.cardType === 'PayPal' ? paypalIcon : ''
-                        }
-                        alt={paymentData.cardType}
-                        className="card-icon"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                  <div className="form-group">
-                    <label>Card Number</label>
-                    <p>{paymentData.cardNumber ? paymentData.cardNumber.replace(/\d{4}(?=\d)/g, '**** ') : 'Not provided'}</p>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Expiry Date</label>
-                    <p>{paymentData.expiryDate || 'Not provided'}</p>
-                  </div>
-
-                  <div className="form-group">
-                    <label>CVV</label>
-                    <p>{paymentData.cvv ? '***' : 'Not provided'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
             {/* Bookings Tab */}
             {activeTab === 'bookings' && (
               <div className="profile-section">
                 <div className="profile-section-title">
-                  <h2>My Bookings</h2>
+                  <h2>Đặt Phòng Của Tôi</h2>
                 </div>
                 
                 {bookings.length === 0 ? (
                   <div className="empty-state">
-                    <p>You don't have any bookings yet.</p>
-                    <Link to="/rooms" className="btn btn-primary">Browse Rooms</Link>
+                    <p>Bạn chưa có đặt phòng nào.</p>
+                    <Link to="/rooms" className="btn btn-primary">Xem Phòng</Link>
                   </div>
                 ) : (
                   <div className="booking-list">
@@ -843,7 +844,7 @@ useEffect(() => {
                           <h3 className="booking-title">{booking.roomName}</h3>
                           <div className="booking-dates">
                             <span>{formatDate(booking.checkIn)}</span>
-                            <span>to</span>
+                            <span>đến</span>
                             <span>{formatDate(booking.checkOut)}</span>
                           </div>
                         </div>
@@ -851,31 +852,33 @@ useEffect(() => {
                         <div className="booking-content">
                           <div className="booking-details">
                             <div className="booking-detail">
-                              <span className="booking-detail-label">Guests</span>
+                              <span className="booking-detail-label">Số Khách</span>
                               <span>{booking.guests}</span>
                             </div>
                             
                             <div className="booking-detail">
-                              <span className="booking-detail-label">Price per night</span>
+                              <span className="booking-detail-label">Giá mỗi đêm</span>
                               <span>${booking.price}</span>
                             </div>
                             
                             <div className="booking-detail">
-                              <span className="booking-detail-label">Total</span>
+                              <span className="booking-detail-label">Tổng Cộng</span>
                               <span>${booking.total}</span>
                             </div>
                             
                             <div className="booking-detail">
-                              <span className="booking-detail-label">Status</span>
+                              <span className="booking-detail-label">Trạng Thái</span>
                               <span className={`booking-status status-${booking.status}`}>
-                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                {booking.status === 'confirmed' ? 'Đã Xác Nhận' :
+                                 booking.status === 'pending' ? 'Đang Chờ' :
+                                 booking.status === 'cancelled' ? 'Đã Hủy' : booking.status}
                               </span>
                             </div>
                           </div>
                           
                           <div className="booking-actions">
                             <Link to={`/rooms/${booking.id}`} className="btn btn-secondary">
-                              View Room
+                              Xem Phòng
                             </Link>
                             
                             {booking.status === 'confirmed' && (
@@ -883,7 +886,7 @@ useEffect(() => {
                                 className="btn btn-secondary"
                                 onClick={() => handleCancelBooking(booking.id)}
                               >
-                                Cancel Booking
+                                Hủy Đặt Phòng
                               </button>
                             )}
                           </div>
@@ -899,13 +902,13 @@ useEffect(() => {
             {activeTab === 'favorites' && (
               <div className="profile-section">
                 <div className="profile-section-title">
-                  <h2>Favorites</h2>
+                  <h2>Yêu Thích</h2>
                 </div>
                 
                 {favorites.length === 0 ? (
                   <div className="empty-state">
-                    <p>You don't have any favorite rooms yet.</p>
-                    <Link to="/rooms" className="btn btn-primary">Browse Rooms</Link>
+                    <p>Bạn chưa có phòng yêu thích nào.</p>
+                    <Link to="/rooms" className="btn btn-primary">Xem Phòng</Link>
                   </div>
                 ) : (
                   <div className="favorites-list">
@@ -918,18 +921,18 @@ useEffect(() => {
                         
                         <div className="favorite-content">
                           <h3 className="favorite-title">{room.name}</h3>
-                          <p className="favorite-price">${room.price} / night</p>
+                          <p className="favorite-price">${room.price} / đêm</p>
                           
                           <div className="favorite-actions">
                             <Link to={`/rooms/${room.id}`} className="btn btn-secondary">
-                              View Details
+                              Xem Chi Tiết
                             </Link>
                             
                             <button 
                               className="btn btn-secondary"
                               onClick={() => handleRemoveFavorite(room.id)}
                             >
-                              Remove
+                              Xóa
                             </button>
                           </div>
                         </div>
@@ -944,12 +947,12 @@ useEffect(() => {
             {activeTab === 'notifications' && (
               <div className="profile-section">
                 <div className="profile-section-title">
-                  <h2>Notifications</h2>
+                  <h2>Thông Báo</h2>
                 </div>
                 
                 {notifications.length === 0 ? (
                   <div className="empty-state">
-                    <p>You don't have any notifications.</p>
+                    <p>Bạn không có thông báo nào.</p>
                   </div>
                 ) : (
                   <div className="notification-list">
@@ -970,12 +973,12 @@ useEffect(() => {
                           <div className="notification-actions">
                             {!notification.read && (
                               <button onClick={() => handleMarkAsRead(notification.id)}>
-                                Mark as read
+                                Đánh Dấu Đã Đọc
                               </button>
                             )}
                             
                             <button onClick={() => handleDeleteNotification(notification.id)}>
-                              Delete
+                              Xóa
                             </button>
                           </div>
                         </div>
@@ -990,16 +993,16 @@ useEffect(() => {
             {activeTab === 'settings' && (
               <div className="profile-section">
                 <div className="profile-section-title">
-                  <h2>Account Settings</h2>
+                  <h2>Cài Đặt Tài Khoản</h2>
                 </div>
                 
                 <div className="settings-section">
-                  <h3 className="settings-title">Email Notifications</h3>
+                  <h3 className="settings-title">Thông Báo Email</h3>
                   
                   <div className="settings-option">
                     <div className="settings-option-label">
-                      <label htmlFor="emailBookings">Booking confirmations</label>
-                      <p>Receive email notifications for booking confirmations</p>
+                      <label htmlFor="emailBookings">Xác nhận đặt phòng</label>
+                      <p>Nhận thông báo email cho các xác nhận đặt phòng</p>
                     </div>
                     <div className="settings-option-control">
                       <input type="checkbox" id="emailBookings" defaultChecked />
@@ -1008,8 +1011,8 @@ useEffect(() => {
                   
                   <div className="settings-option">
                     <div className="settings-option-label">
-                      <label htmlFor="emailPromotions">Promotions and offers</label>
-                      <p>Receive email notifications about special offers and promotions</p>
+                      <label htmlFor="emailPromotions">Khuyến mãi và ưu đãi</label>
+                      <p>Nhận thông báo email về các ưu đãi và khuyến mãi đặc biệt</p>
                     </div>
                     <div className="settings-option-control">
                       <input type="checkbox" id="emailPromotions" defaultChecked />
@@ -1018,8 +1021,8 @@ useEffect(() => {
                   
                   <div className="settings-option">
                     <div className="settings-option-label">
-                      <label htmlFor="emailNewsletter">Newsletter</label>
-                      <p>Receive our monthly newsletter</p>
+                      <label htmlFor="emailNewsletter">Bản tin</label>
+                      <p>Nhận bản tin hàng tháng của chúng tôi</p>
                     </div>
                     <div className="settings-option-control">
                       <input type="checkbox" id="emailNewsletter" />
@@ -1028,45 +1031,23 @@ useEffect(() => {
                 </div>
                 
                 <div className="settings-section">
-                  <h3 className="settings-title">Language and Currency</h3>
+                  <h3 className="settings-title">Ngôn Ngữ và Tiền Tệ</h3>
                   
                   <div className="settings-form">
                     <div className="form-group">
-                      <label htmlFor="language">Language</label>
-                      <select id="language" defaultValue="en">
-                        <option value="en">English</option>
-                        <option value="fr">French</option>
-                        <option value="es">Spanish</option>
-                        <option value="de">German</option>
-                        <option value="vi">Vietnamese</option>
+                      <label htmlFor="language">Ngôn Ngữ</label>
+                      <select id="language" defaultValue="vi">
+                        <option value="en">Tiếng Anh</option>
+                        <option value="fr">Tiếng Pháp</option>
+                        <option value="es">Tiếng Tây Ban Nha</option>
+                        <option value="de">Tiếng Đức</option>
+                        <option value="vi">Tiếng Việt</option>
                       </select>
                     </div>
 
-                    <div className="payment-info">
                     <div className="form-group">
-                      <label>Card Type</label>
-                      <p>{paymentData.cardType || 'Not provided'}</p>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Card Number</label>
-                      <p>{paymentData.cardNumber ? paymentData.cardNumber.replace(/\d{4}(?=\d)/g, '**** ') : 'Not provided'}</p>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Expiry Date</label>
-                      <p>{paymentData.expiryDate || 'Not provided'}</p>
-                    </div>
-
-                    <div className="form-group">
-                      <label>CVV</label>
-                      <p>{paymentData.cvv ? '***' : 'Not provided'}</p>
-                    </div>
-                  </div>
-
-                    <div className="form-group">
-                      <label htmlFor="currency">Currency</label>
-                      <select id="currency" defaultValue="usd">
+                      <label htmlFor="currency">Tiền Tệ</label>
+                      <select id="currency" defaultValue="vnd">
                         <option value="usd">USD ($)</option>
                         <option value="eur">EUR (€)</option>
                         <option value="gbp">GBP (£)</option>
@@ -1078,12 +1059,12 @@ useEffect(() => {
                 </div>
                 
                 <div className="settings-section">
-                  <h3 className="settings-title danger">Delete Account</h3>
+                  <h3 className="settings-title danger">Xóa Tài Khoản</h3>
                   <p className="settings-description">
-                    Once you delete your account, there is no going back. Please be certain.
+                    Sau khi bạn xóa tài khoản, không thể hoàn tác. Vui lòng chắc chắn.
                   </p>
                   
-                  <button className="btn btn-danger">Delete Account</button>
+                  <button className="btn btn-danger">Xóa Tài Khoản</button>
                 </div>
               </div>
             )}

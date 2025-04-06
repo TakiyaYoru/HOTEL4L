@@ -51,12 +51,12 @@ function MyBookingsPage() {
         setError(null);
 
         // 1. Lấy thông tin khách hàng hiện tại (bao gồm bookings)
-        console.log('Fetching current customer data...');
+        console.log('Đang lấy dữ liệu khách hàng hiện tại...');
         const customerData = await services.api.customer.fetchCurrentCustomer();
-        console.log('Customer data received:', customerData);
+        console.log('Dữ liệu khách hàng nhận được:', customerData);
 
         if (!customerData || !customerData.bookings || customerData.bookings.length === 0) {
-          console.log('No bookings found for customer');
+          console.log('Không tìm thấy đặt phòng nào cho khách hàng');
           setBookings([]);
           setFilteredBookings([]);
           setLoading(false);
@@ -69,25 +69,25 @@ function MyBookingsPage() {
         for (const booking of customerData.bookings) {
           // Bỏ qua các booking null
           if (!booking) {
-            console.log('Skipping null booking');
+            console.log('Bỏ qua đặt phòng null');
             continue;
           }
 
-          console.log(`Processing booking: ${booking.bookingID}`);
+          console.log(`Đang xử lý đặt phòng: ${booking.bookingID}`);
 
           // 2. Gọi API ../Bookings/{bookingID} để lấy thông tin chi tiết của booking
           let bookingData = null;
           try {
-            console.log(`Fetching booking data for ${booking.bookingID}...`);
+            console.log(`Đang lấy dữ liệu đặt phòng cho ${booking.bookingID}...`);
             bookingData = await services.api.booking.fetchBookingById(booking.bookingID);
-            console.log(`Booking data for ${booking.bookingID}:`, bookingData);
+            console.log(`Dữ liệu đặt phòng cho ${booking.bookingID}:`, bookingData);
           } catch (bookingError) {
-            console.error(`Error fetching booking data for ${booking.bookingID}:`, bookingError);
+            console.error(`Lỗi khi lấy dữ liệu đặt phòng cho ${booking.bookingID}:`, bookingError);
             continue;
           }
 
           if (!bookingData) {
-            console.log(`No booking data found for ${booking.bookingID}, skipping this booking`);
+            console.log(`Không tìm thấy dữ liệu đặt phòng cho ${booking.bookingID}, bỏ qua đặt phòng này`);
             continue;
           }
 
@@ -96,22 +96,22 @@ function MyBookingsPage() {
           const detail = bookingDetails && bookingDetails.length > 0 ? bookingDetails[0] : null;
 
           if (!detail || !detail.detailID) {
-            console.log(`No details or detailID found for booking ${booking.bookingID}, skipping this booking`);
+            console.log(`Không tìm thấy chi tiết hoặc detailID cho đặt phòng ${booking.bookingID}, bỏ qua đặt phòng này`);
             continue;
           }
 
           // 4. Gọi API bookingDetails để lấy thông tin chi tiết
           let bookingDetailData = null;
           let roomId = detail.roomID || 'N/A';
-          let roomTypeName = 'Standard Room'; // Giá trị mặc định
+          let roomTypeName = 'Phòng Tiêu Chuẩn'; // Giá trị mặc định
 
           try {
-            console.log(`Fetching booking detail data for detailID ${detail.detailID}...`);
+            console.log(`Đang lấy dữ liệu chi tiết đặt phòng cho detailID ${detail.detailID}...`);
             bookingDetailData = await services.api.booking.fetchBookingDetailById(detail.detailID);
-            console.log(`Booking detail data for ${detail.detailID}:`, bookingDetailData);
+            console.log(`Dữ liệu chi tiết đặt phòng cho ${detail.detailID}:`, bookingDetailData);
 
             if (!bookingDetailData || !bookingDetailData.room) {
-              console.log(`No detailed data or room found for detailID ${detail.detailID}, using fallback`);
+              console.log(`Không tìm thấy dữ liệu chi tiết hoặc phòng cho detailID ${detail.detailID}, sử dụng giá trị dự phòng`);
               // Sử dụng roomID từ bookingDetails nếu có
               roomId = bookingDetailData?.roomID || detail.roomID || 'N/A';
             } else {
@@ -124,22 +124,29 @@ function MyBookingsPage() {
                 const roomType = roomTypes.find(type => type.rTypeID === rTypeID);
                 if (roomType && roomType.typeName) {
                   roomTypeName = roomType.typeName.replace('_', ' ');
+                  // Dịch tên loại phòng sang tiếng Việt
+                  roomTypeName = roomTypeName === 'Standard Room' ? 'Phòng Tiêu Chuẩn' :
+                                 roomTypeName === 'Deluxe Room' ? 'Phòng Cao Cấp' :
+                                 roomTypeName === 'Family Room' ? 'Phòng Gia Đình' :
+                                 roomTypeName === 'Suite Room' ? 'Phòng Suite' :
+                                 roomTypeName === 'Executive Suite' ? 'Căn Hộ Hạng Sang' :
+                                 roomTypeName === 'Presidential Suite' ? 'Căn Hộ Tổng Thống' : roomTypeName;
                 } else {
-                  console.log(`Room type not found for rTypeID ${rTypeID}, using fallback`);
+                  console.log(`Không tìm thấy loại phòng cho rTypeID ${rTypeID}, sử dụng giá trị dự phòng`);
                 }
               }
             }
           } catch (detailError) {
-            console.error(`Error fetching booking detail for ${detail.detailID}:`, detailError);
+            console.error(`Lỗi khi lấy chi tiết đặt phòng cho ${detail.detailID}:`, detailError);
             // Fallback dựa trên roomID prefix nếu có
             if (roomId !== 'N/A') {
               const roomIdPrefix = roomId.substring(0, 3).toUpperCase();
-              if (roomIdPrefix === 'STD') roomTypeName = 'Standard Room';
-              else if (roomIdPrefix === 'DEL') roomTypeName = 'Deluxe Room';
-              else if (roomIdPrefix === 'FAM') roomTypeName = 'Family Room';
-              else if (roomIdPrefix === 'SUI') roomTypeName = 'Suite Room';
-              else if (roomIdPrefix === 'EXE') roomTypeName = 'Executive Suite';
-              else if (roomIdPrefix === 'PRE') roomTypeName = 'Presidential Suite';
+              if (roomIdPrefix === 'STD') roomTypeName = 'Phòng Tiêu Chuẩn';
+              else if (roomIdPrefix === 'DEL') roomTypeName = 'Phòng Cao Cấp';
+              else if (roomIdPrefix === 'FAM') roomTypeName = 'Phòng Gia Đình';
+              else if (roomIdPrefix === 'SUI') roomTypeName = 'Phòng Suite';
+              else if (roomIdPrefix === 'EXE') roomTypeName = 'Căn Hộ Hạng Sang';
+              else if (roomIdPrefix === 'PRE') roomTypeName = 'Căn Hộ Tổng Thống';
             }
           }
 
@@ -161,13 +168,13 @@ function MyBookingsPage() {
           });
         }
 
-        console.log('Final processed bookings:', processedBookings);
+        console.log('Danh sách đặt phòng đã xử lý:', processedBookings);
         setBookings(processedBookings);
         setFilteredBookings(processedBookings);
 
       } catch (err) {
-        console.error('Error fetching bookings data:', err);
-        setError('Failed to load your bookings. Please try again later.');
+        console.error('Lỗi khi lấy dữ liệu đặt phòng:', err);
+        setError('Không thể tải danh sách đặt phòng của bạn. Vui lòng thử lại sau.');
         setBookings([]);
         setFilteredBookings([]);
       } finally {
@@ -203,7 +210,7 @@ function MyBookingsPage() {
 
   // Xử lý hủy đặt phòng
   const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đặt phòng này không?')) {
       return;
     }
 
@@ -228,20 +235,20 @@ function MyBookingsPage() {
 
       setLoading(false);
 
-      alert('Booking cancelled successfully!');
+      alert('Hủy đặt phòng thành công!');
     } catch (err) {
-      console.error('Error cancelling booking:', err);
-      setError('Failed to cancel booking. Please try again.');
+      console.error('Lỗi khi hủy đặt phòng:', err);
+      setError('Không thể hủy đặt phòng. Vui lòng thử lại.');
       setLoading(false);
 
-      alert('Failed to cancel booking. Please try again.');
+      alert('Không thể hủy đặt phòng. Vui lòng thử lại.');
     }
   };
 
   // Format ngày
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return new Date(dateString).toLocaleDateString('vi-VN', options);
   };
 
   // Phân trang
@@ -257,8 +264,8 @@ function MyBookingsPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Your Bookings</h1>
-          <p>Manage and view all your bookings</p>
+          <h1 className="page-title">Đặt Phòng Của Bạn</h1>
+          <p>Quản lý và xem tất cả các đặt phòng của bạn</p>
         </div>
       </div>
 
@@ -271,31 +278,31 @@ function MyBookingsPage() {
                 className={`filter-button ${activeFilter === 'all' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('all')}
               >
-                All
+                Tất Cả
               </button>
               <button
                 className={`filter-button ${activeFilter === 'confirmed' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('confirmed')}
               >
-                Confirmed
+                Đã Xác Nhận
               </button>
               <button
                 className={`filter-button ${activeFilter === 'pending' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('pending')}
               >
-                Pending
+                Đang Chờ
               </button>
               <button
                 className={`filter-button ${activeFilter === 'completed' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('completed')}
               >
-                Completed
+                Đã Hoàn Thành
               </button>
               <button
                 className={`filter-button ${activeFilter === 'cancelled' ? 'active' : ''}`}
                 onClick={() => setActiveFilter('cancelled')}
               >
-                Cancelled
+                Đã Hủy
               </button>
             </div>
 
@@ -303,7 +310,7 @@ function MyBookingsPage() {
               <FaSearch className="search-icon" />
               <input
                 type="text"
-                placeholder="Search bookings..."
+                placeholder="Tìm kiếm đặt phòng..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -314,7 +321,7 @@ function MyBookingsPage() {
           {loading && (
             <div className="loading-container">
               <FaSpinner className="loading-spinner" />
-              <p>Loading your bookings...</p>
+              <p>Đang tải đặt phòng của bạn...</p>
             </div>
           )}
 
@@ -322,13 +329,13 @@ function MyBookingsPage() {
           {error && (
             <div className="error-container">
               <FaExclamationTriangle />
-              <h3>Error loading bookings</h3>
+              <h3>Lỗi khi tải đặt phòng</h3>
               <p>{error}</p>
               <button
                 className="btn-primary"
                 onClick={() => window.location.reload()}
               >
-                Try Again
+                Thử Lại
               </button>
             </div>
           )}
@@ -336,9 +343,9 @@ function MyBookingsPage() {
           {/* Danh sách đặt phòng */}
           {!loading && !error && currentItems.length === 0 ? (
             <div className="empty-state">
-              <h3>No bookings found</h3>
-              <p>You don't have any bookings matching your criteria.</p>
-              <Link to="/rooms" className="booking-button btn-outline">Browse Rooms</Link>
+              <h3>Không tìm thấy đặt phòng</h3>
+              <p>Bạn không có đặt phòng nào phù hợp với tiêu chí của bạn.</p>
+              <Link to="/rooms" className="booking-button btn-outline">Xem Phòng</Link>
             </div>
           ) : !loading && !error && (
             <div className="rooms-grid">
@@ -349,7 +356,10 @@ function MyBookingsPage() {
                     style={{ backgroundImage: `url(${booking.roomImage})` }}
                   >
                     <div className={`booking-status-badge status-${booking.status || 'pending'}`}>
-                      {booking.status ? booking.status.charAt(0).toUpperCase() + booking.status.slice(1) : 'Pending'}
+                      {booking.status === 'confirmed' ? 'Đã Xác Nhận' :
+                       booking.status === 'pending' ? 'Đang Chờ' :
+                       booking.status === 'completed' ? 'Đã Hoàn Thành' :
+                       booking.status === 'cancelled' ? 'Đã Hủy' : 'Đã trả phòng'}
                     </div>
                   </div>
 
@@ -362,14 +372,14 @@ function MyBookingsPage() {
                     {/* Mã phòng */}
                     <div className="booking-detail">
                       <FaBed className="booking-icon" />
-                      <span className="booking-detail-label">Room ID:</span>
+                      <span className="booking-detail-label">Mã Phòng:</span>
                       <span>{booking.roomId}</span>
                     </div>
 
                     {/* Mã booking */}
                     <div className="booking-detail">
                       <FaHashtag className="booking-icon" />
-                      <span className="booking-detail-label">Booking ID:</span>
+                      <span className="booking-detail-label">Mã Đặt Phòng:</span>
                       <span>{booking.id}</span>
                     </div>
 
@@ -377,19 +387,19 @@ function MyBookingsPage() {
                     <div className="booking-dates">
                       <div>
                         <FaCalendarAlt className="booking-icon" />
-                        <span>Check-in: {formatDate(booking.checkInDate)}</span>
+                        <span>Nhận Phòng: {formatDate(booking.checkInDate)}</span>
                       </div>
                       <div>
                         <FaCalendarAlt className="booking-icon" />
-                        <span>Check-out: {formatDate(booking.checkOutDate)}</span>
+                        <span>Trả Phòng: {formatDate(booking.checkOutDate)}</span>
                       </div>
                     </div>
 
                     {/* Số tiền */}
                     <div className="booking-detail">
                       <FaDollarSign className="booking-icon" />
-                      <span className="booking-detail-label">Total Amount:</span>
-                      <span>${booking.total}</span>
+                      <span className="booking-detail-label">Tổng Số Tiền:</span>
+                      <span>{services.utils.format.formatCurrency(booking.total)}</span>
                     </div>
                   </div>
 
@@ -398,7 +408,7 @@ function MyBookingsPage() {
                       to={`/my-bookings/${booking.id}`}
                       className="btn-outline"
                     >
-                      <FaEye /> View Details
+                      <FaEye /> Xem Chi Tiết
                     </Link>
 
                     {booking.status === 'completed' && (
@@ -406,43 +416,12 @@ function MyBookingsPage() {
                         to={`/rooms/${booking.roomId}`}
                         className="booking-button btn-secondary"
                       >
-                        <FaCheck /> Book Again
+                        <FaCheck /> Đặt Lại
                       </Link>
                     )}
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Phân trang */}
-          {totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className={`pagination-button ${currentPage === 1 ? 'disabled' : ''}`}
-                onClick={() => currentPage > 1 && paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <FaChevronLeft />
-              </button>
-
-              {[...Array(totalPages)].map((_, index) => (
-                <button
-                  key={index}
-                  className={`pagination-button ${currentPage === index + 1 ? 'active' : ''}`}
-                  onClick={() => paginate(index + 1)}
-                >
-                  {index + 1}
-                </button>
-              ))}
-
-              <button
-                className={`pagination-button ${currentPage === totalPages ? 'disabled' : ''}`}
-                onClick={() => currentPage < totalPages && paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <FaChevronRight />
-              </button>
             </div>
           )}
         </section>

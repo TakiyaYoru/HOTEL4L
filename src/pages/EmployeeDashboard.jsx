@@ -6,11 +6,12 @@ import { services } from '../services';
 import { 
   FaCalendarAlt, 
   FaCheck, 
-  FaTimes, 
   FaUser, 
   FaQrcode, 
   FaSignOutAlt, 
-  FaSpinner 
+  FaSpinner,
+  FaSearch,
+  FaTimes
 } from 'react-icons/fa';
 import '../styles/EmployeeDashboard.css';
 
@@ -82,6 +83,60 @@ const DashboardContent = styled.div`
   &:hover {
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
   }
+`;
+
+const SearchSection = styled.div`
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+`;
+
+const SearchForm = styled.form`
+  display: flex;
+  gap: 15px;
+  align-items: center;
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  
+  &:focus {
+    border-color: #b8860b;
+    box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.2);
+    outline: none;
+  }
+`;
+
+const SearchButton = styled.button`
+  padding: 12px 20px;
+  background-color: #b8860b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background-color: #d4af37;
+    transform: translateY(-2px);
+  }
+`;
+
+const BookingInfo = styled.div`
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 `;
 
 const TabContainer = styled.div`
@@ -228,31 +283,6 @@ const CloseButton = styled.button`
   }
 `;
 
-const FormGroup = styled.div`
-  margin-bottom: 20px;
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #444;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 12px 15px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  
-  &:focus {
-    border-color: #b8860b;
-    box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.2);
-    outline: none;
-  }
-`;
-
 const SubmitButton = styled.button`
   padding: 14px 28px;
   background-color: #b8860b;
@@ -293,11 +323,11 @@ const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
   background-color: ${props => {
-    if (props.status === 'Pending') return '#f39c12';
-    if (props.status === 'Confirmed') return '#2ecc71';
-    if (props.status === 'Checked-in') return '#3498db';
-    if (props.status === 'Checked-out') return '#95a5a6';
-    if (props.status === 'Cancelled') return '#e74c3c';
+    if (props.status === 'PENDING') return '#f39c12';
+    if (props.status === 'CONFIRMED') return '#2ecc71';
+    if (props.status === 'CHECKED_IN') return '#3498db';
+    if (props.status === 'CHECKED_OUT') return '#95a5a6';
+    if (props.status === 'CANCELLED') return '#e74c3c';
     return '#95a5a6';
   }};
   color: white;
@@ -339,81 +369,217 @@ const ErrorMessage = styled.p`
 
 function EmployeeDashboard() {
   const { currentUser, logout, isEmployee } = useAuth();
-  const [activeTab, setActiveTab] = useState('pending');
-  const [bookings, setBookings] = useState([]);
+  const [activeTab, setActiveTab] = useState('PENDING');
+  const [pendingBookings, setPendingBookings] = useState([]);
+  const [confirmedBookings, setConfirmedBookings] = useState([]);
+  const [checkedInBookings, setCheckedInBookings] = useState([]);
+  const [checkedOutBookings, setCheckedOutBookings] = useState([]);
+  const [allBookings, setAllBookings] = useState([]);
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Search states
+  const [searchBookingId, setSearchBookingId] = useState('');
+  const [searchedBooking, setSearchedBooking] = useState(null);
+  const [searchError, setSearchError] = useState(null);
+
   // Modal states
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'confirmPayment', 'checkIn', 'checkOut', 'cancel'
+  const [modalType, setModalType] = useState(''); // 'confirmPayment', 'checkIn', 'checkOut'
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [checkInCode, setCheckInCode] = useState('');
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState(null);
 
   // Fetch employee and bookings data
-// State để lưu trữ booking theo trạng thái
-const [pendingBookings, setPendingBookings] = useState([]);
-const [confirmedBookings, setConfirmedBookings] = useState([]);
-const [checkedInBookings, setCheckedInBookings] = useState([]);
-const [allBookings, setAllBookings] = useState([]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-// Fetch bookings theo trạng thái
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+        // Fetch employee data
+        const employeeData = await services.api.employee.fetchEmployeeById(currentUser.id);
+        setEmployee(employeeData);
 
-      // Fetch employee data
-      const employeeData = await services.api.employee.fetchEmployeeById(currentUser.id);
-      setEmployee(employeeData);
+        // Fetch bookings theo trạng thái
+        const pendingData = await services.api.booking.fetchBookingsByStatus('PENDING');
+        const confirmedData = await services.api.booking.fetchBookingsByStatus('CONFIRMED');
+        const checkedInData = await services.api.booking.fetchBookingsByStatus('CHECKED_IN');
+        const checkedOutData = await services.api.booking.fetchBookingsByStatus('CHECKED_OUT');
+        const allData = await services.api.booking.fetchAllBookings();
 
-      // Fetch bookings theo trạng thái
-      const pendingData = await services.api.booking.fetchBookingsByStatus('Pending');
-      const confirmedData = await services.api.booking.fetchBookingsByStatus('Confirmed');
-      const checkedInData = await services.api.booking.fetchBookingsByStatus('Checked-in');
-      const allData = await services.api.booking.fetchAllBookings();
+        // Chuẩn hóa dữ liệu: Lấy roomID từ bookingDetails và chuẩn hóa bookingStatus
+        const standardizeBookings = (bookings) => {
+          return bookings.map(booking => ({
+            ...booking,
+            roomID: booking.bookingDetails && booking.bookingDetails.length > 0 
+              ? booking.bookingDetails[0].roomID 
+              : booking.roomID || null,
+            bookingStatus: booking.bookingStatus ? booking.bookingStatus.toUpperCase() : 'UNKNOWN',
+            fullName: booking.fullName || 'Không xác định',
+            checkInDate: booking.checkInDate || null,
+            checkOutDate: booking.checkOutDate || null,
+            paymentMethod: booking.paymentMethod || 'Không xác định',
+          }));
+        };
 
-      // Lọc thêm điều kiện paymentMethod cho Pending Bookings
-      const filteredPending = pendingData.filter(booking => booking.paymentMethod === 'Cash');
+        // Lọc dữ liệu để đảm bảo đúng trạng thái
+        const filterByStatus = (bookings, status) => {
+          console.log(`Dữ liệu gốc cho trạng thái ${status}:`, bookings);
+          const filtered = bookings.filter(booking => {
+            const matchesStatus = booking.bookingStatus === status;
+            if (!matchesStatus) {
+              console.warn(`Đặt phòng ${booking.bookingID} không khớp với trạng thái ${status}. Trạng thái tìm thấy: ${booking.bookingStatus}`);
+            }
+            return matchesStatus;
+          });
+          if (filtered.length !== bookings.length) {
+            console.warn(`API trả về dữ liệu không chính xác cho trạng thái ${status}. Kì vọng ${status}, nhưng tìm thấy:`, 
+              bookings.filter(booking => booking.bookingStatus !== status));
+          }
+          return filtered;
+        };
 
-      setPendingBookings(filteredPending);
-      setConfirmedBookings(confirmedData);
-      setCheckedInBookings(checkedInData);
-      setAllBookings(allData);
+        const standardizedPending = filterByStatus(standardizeBookings(pendingData), 'PENDING');
+        const standardizedConfirmed = filterByStatus(standardizeBookings(confirmedData), 'CONFIRMED');
+        const standardizedCheckedIn = filterByStatus(standardizeBookings(checkedInData), 'CHECKED_IN');
+        const standardizedCheckedOut = filterByStatus(standardizeBookings(checkedOutData), 'CHECKED_OUT');
+        const standardizedAll = standardizeBookings(allData);
 
-      console.log('Pending Bookings:', filteredPending);
-      console.log('Confirmed Bookings:', confirmedData);
-      console.log('Checked-in Bookings:', checkedInData);
-      console.log('All Bookings:', allData);
+        setPendingBookings(standardizedPending);
+        setConfirmedBookings(standardizedConfirmed);
+        setCheckedInBookings(standardizedCheckedIn);
+        setCheckedOutBookings(standardizedCheckedOut);
+        setAllBookings(standardizedAll);
 
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Failed to load data. Please try again later.');
-      setLoading(false);
-    }
-  };
+        console.log('Đặt phòng đang chờ:', standardizedPending);
+        console.log('Đặt phòng đã xác nhận:', standardizedConfirmed);
+        console.log('Đặt phòng đã nhận:', standardizedCheckedIn);
+        console.log('Đặt phòng đã trả:', standardizedCheckedOut);
+        console.log('Tất cả đặt phòng:', standardizedAll);
 
-  fetchData();
-}, [currentUser.id]);
+        setLoading(false);
+      } catch (err) {
+        console.error('Lỗi khi lấy dữ liệu:', err);
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [currentUser.id]);
+
   // Redirect if not an employee
   if (!isEmployee) {
     return <Navigate to="/" />;
   }
 
-  // Filter bookings by status
+  // Refresh bookings after actions
+  const refreshBookings = async () => {
+    try {
+      const pendingData = await services.api.booking.fetchBookingsByStatus('PENDING');
+      const confirmedData = await services.api.booking.fetchBookingsByStatus('CONFIRMED');
+      const checkedInData = await services.api.booking.fetchBookingsByStatus('CHECKED_IN');
+      const checkedOutData = await services.api.booking.fetchBookingsByStatus('CHECKED_OUT');
+      const allData = await services.api.booking.fetchAllBookings();
 
+      // Chuẩn hóa dữ liệu: Lấy roomID từ bookingDetails và chuẩn hóa bookingStatus
+      const standardizeBookings = (bookings) => {
+        return bookings.map(booking => ({
+          ...booking,
+          roomID: booking.bookingDetails && booking.bookingDetails.length > 0 
+            ? booking.bookingDetails[0].roomID 
+            : booking.roomID || null,
+          bookingStatus: booking.bookingStatus ? booking.bookingStatus.toUpperCase() : 'UNKNOWN',
+          fullName: booking.fullName || 'Không xác định',
+          checkInDate: booking.checkInDate || null,
+          checkOutDate: booking.checkOutDate || null,
+          paymentMethod: booking.paymentMethod || 'Không xác định',
+        }));
+      };
+
+      // Lọc dữ liệu để đảm bảo đúng trạng thái
+      const filterByStatus = (bookings, status) => {
+        console.log(`Dữ liệu gốc cho trạng thái ${status}:`, bookings);
+        const filtered = bookings.filter(booking => {
+          const matchesStatus = booking.bookingStatus === status;
+          if (!matchesStatus) {
+            console.warn(`Đặt phòng ${booking.bookingID} không khớp với trạng thái ${status}. Trạng thái tìm thấy: ${booking.bookingStatus}`);
+          }
+          return matchesStatus;
+        });
+        if (filtered.length !== bookings.length) {
+          console.warn(`API trả về dữ liệu không chính xác cho trạng thái ${status}. Kì vọng ${status}, nhưng tìm thấy:`, 
+            bookings.filter(booking => booking.bookingStatus !== status));
+        }
+        return filtered;
+      };
+
+      const standardizedPending = filterByStatus(standardizeBookings(pendingData), 'PENDING');
+      const standardizedConfirmed = filterByStatus(standardizeBookings(confirmedData), 'CONFIRMED');
+      const standardizedCheckedIn = filterByStatus(standardizeBookings(checkedInData), 'CHECKED_IN');
+      const standardizedCheckedOut = filterByStatus(standardizeBookings(checkedOutData), 'CHECKED_OUT');
+      const standardizedAll = standardizeBookings(allData);
+
+      setPendingBookings(standardizedPending);
+      setConfirmedBookings(standardizedConfirmed);
+      setCheckedInBookings(standardizedCheckedIn);
+      setCheckedOutBookings(standardizedCheckedOut);
+      setAllBookings(standardizedAll);
+
+      console.log('Đặt phòng đang chờ sau khi làm mới:', standardizedPending);
+    } catch (err) {
+      console.error('Lỗi khi làm mới đặt phòng:', err);
+      setError('Không thể làm mới danh sách đặt phòng. Vui lòng thử lại.');
+    }
+  };
+
+  // Handle search booking by BookingID
+  const handleSearchBooking = async (e) => {
+    e.preventDefault();
+    setSearchError(null);
+    setSearchedBooking(null);
+
+    try {
+      const bookingData = await services.api.booking.fetchBookingById(searchBookingId);
+      if (!bookingData) {
+        setSearchError('Không tìm thấy đặt phòng. Vui lòng kiểm tra mã đặt phòng.');
+        return;
+      }
+      if (bookingData.bookingStatus !== 'CONFIRMED') {
+        setSearchError('Đặt phòng này không ở trạng thái ĐÃ XÁC NHẬN và không thể nhận phòng.');
+        return;
+      }
+
+      // Chuẩn hóa dữ liệu: Lấy roomID từ bookingDetails
+      const roomID = bookingData.bookingDetails && bookingData.bookingDetails.length > 0 
+        ? bookingData.bookingDetails[0].roomID 
+        : null;
+
+      if (!roomID) {
+        setSearchError('Không tìm thấy mã phòng cho đặt phòng này.');
+        return;
+      }
+
+      const standardizedBooking = {
+        ...bookingData,
+        roomID: roomID,
+        bookingStatus: bookingData.bookingStatus ? bookingData.bookingStatus.toUpperCase() : 'UNKNOWN',
+      };
+
+      setSearchedBooking(standardizedBooking);
+    } catch (err) {
+      console.error('Lỗi khi tìm kiếm đặt phòng:', err);
+      setSearchError('Không thể tìm thấy đặt phòng. Vui lòng thử lại.');
+    }
+  };
 
   // Handle modal actions
   const openModal = (type, booking) => {
     setModalType(type);
     setSelectedBooking(booking);
     setShowModal(true);
-    setCheckInCode('');
     setModalError(null);
   };
 
@@ -421,7 +587,6 @@ useEffect(() => {
     setShowModal(false);
     setModalType('');
     setSelectedBooking(null);
-    setCheckInCode('');
     setModalError(null);
   };
 
@@ -430,35 +595,31 @@ useEffect(() => {
       setModalLoading(true);
       setModalError(null);
 
-      // Generate check-in code
-      const checkInCode = services.utils.generateCheckInCode();
+      if (!selectedBooking.roomID) {
+        throw new Error('Thiếu mã phòng cho đặt phòng này.');
+      }
 
-      // Update booking status to Confirmed
+      // Update booking status to CONFIRMED
       await services.api.booking.updateBooking(selectedBooking.bookingID, {
         ...selectedBooking,
-        bookingStatus: 'Confirmed',
+        bookingStatus: 'CONFIRMED',
         paymentStatus: true,
-        checkInCode: checkInCode,
       });
 
-      // Send confirmation email to customer
-      await services.api.email.sendConfirmationEmail({
-        to: selectedBooking.email,
-        bookingID: selectedBooking.bookingID,
-        checkInCode: checkInCode,
-        checkInDate: selectedBooking.checkInDate,
-        checkOutDate: selectedBooking.checkOutDate,
-        total: selectedBooking.totalAmount,
+      // Update room status to Blocked
+      const roomData = await services.api.room.fetchRoomById(selectedBooking.roomID);
+      await services.api.room.updateRoom(selectedBooking.roomID, {
+        roomID: roomData.roomID,
+        roomStatus: 'Blocked',
+        rTypeID: roomData.rTypeID,
       });
 
       // Refresh bookings
-      const bookingsData = await services.api.booking.fetchBookings();
-      setBookings(bookingsData);
-
+      await refreshBookings();
       closeModal();
     } catch (err) {
-      console.error('Error confirming payment:', err);
-      setModalError('Failed to confirm payment. Please try again.');
+      console.error('Lỗi khi xác nhận thanh toán:', err);
+      setModalError(err.message || 'Không thể xác nhận thanh toán. Vui lòng thử lại.');
     } finally {
       setModalLoading(false);
     }
@@ -469,28 +630,33 @@ useEffect(() => {
       setModalLoading(true);
       setModalError(null);
 
-      // Verify check-in code
-      const verification = await services.api.booking.verifyCheckInCode(selectedBooking.bookingID, checkInCode);
-      if (!verification.success) {
-        setModalError('Invalid check-in code. Please try again.');
-        return;
+      if (!selectedBooking.roomID) {
+        throw new Error('Thiếu mã phòng cho đặt phòng này.');
       }
 
-      // Update booking status to Checked-in
+      // Update booking status to CHECKED_IN
       await services.api.booking.updateBooking(selectedBooking.bookingID, {
         ...selectedBooking,
-        bookingStatus: 'Checked-in',
+        bookingStatus: 'CHECKED_IN',
         checkInTime: new Date().toISOString(),
       });
 
-      // Refresh bookings
-      const bookingsData = await services.api.booking.fetchBookings();
-      setBookings(bookingsData);
+      // Update room status to Occupied
+      const roomData = await services.api.room.fetchRoomById(selectedBooking.roomID);
+      await services.api.room.updateRoom(selectedBooking.roomID, {
+        roomID: roomData.roomID,
+        roomStatus: 'Occupied',
+        rTypeID: roomData.rTypeID,
+      });
 
+      // Refresh bookings
+      await refreshBookings();
+      setSearchedBooking(null);
+      setSearchBookingId('');
       closeModal();
     } catch (err) {
-      console.error('Error checking in:', err);
-      setModalError('Failed to check in. Please try again.');
+      console.error('Lỗi khi nhận phòng:', err);
+      setModalError(err.message || 'Không thể nhận phòng. Vui lòng thử lại.');
     } finally {
       setModalLoading(false);
     }
@@ -501,10 +667,14 @@ useEffect(() => {
       setModalLoading(true);
       setModalError(null);
 
-      // Update booking status to Checked-out
+      if (!selectedBooking.roomID) {
+        throw new Error('Thiếu mã phòng cho đặt phòng này.');
+      }
+
+      // Update booking status to CHECKED_OUT
       await services.api.booking.updateBooking(selectedBooking.bookingID, {
         ...selectedBooking,
-        bookingStatus: 'Checked-out',
+        bookingStatus: 'CHECKED_OUT',
         checkOutTime: new Date().toISOString(),
       });
 
@@ -516,60 +686,12 @@ useEffect(() => {
         rTypeID: roomData.rTypeID,
       });
 
-      // Send thank you email to customer
-      await services.api.email.sendThankYouEmail({
-        to: selectedBooking.email,
-        bookingID: selectedBooking.bookingID,
-      });
-
       // Refresh bookings
-      const bookingsData = await services.api.booking.fetchBookings();
-      setBookings(bookingsData);
-
+      await refreshBookings();
       closeModal();
     } catch (err) {
-      console.error('Error checking out:', err);
-      setModalError('Failed to check out. Please try again.');
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  const handleCancelBooking = async () => {
-    try {
-      setModalLoading(true);
-      setModalError(null);
-
-      // Update booking status to Cancelled
-      await services.api.booking.updateBooking(selectedBooking.bookingID, {
-        ...selectedBooking,
-        bookingStatus: 'Cancelled',
-      });
-
-      // If the room is still booked, set it to Available
-      if (selectedBooking.bookingStatus === 'Pending' || selectedBooking.bookingStatus === 'Confirmed' || selectedBooking.bookingStatus === 'Checked-in') {
-        const roomData = await services.api.room.fetchRoomById(selectedBooking.roomID);
-        await services.api.room.updateRoom(selectedBooking.roomID, {
-          roomID: roomData.roomID,
-          roomStatus: 'Available',
-          rTypeID: roomData.rTypeID,
-        });
-      }
-
-      // Send cancellation email to customer
-      await services.api.email.sendCancellationEmail({
-        to: selectedBooking.email,
-        bookingID: selectedBooking.bookingID,
-      });
-
-      // Refresh bookings
-      const bookingsData = await services.api.booking.fetchBookings();
-      setBookings(bookingsData);
-
-      closeModal();
-    } catch (err) {
-      console.error('Error cancelling booking:', err);
-      setModalError('Failed to cancel booking. Please try again.');
+      console.error('Lỗi khi trả phòng:', err);
+      setModalError(err.message || 'Không thể trả phòng. Vui lòng thử lại.');
     } finally {
       setModalLoading(false);
     }
@@ -579,7 +701,38 @@ useEffect(() => {
     try {
       await logout();
     } catch (err) {
-      console.error('Error logging out:', err);
+      console.error('Lỗi khi đăng xuất:', err);
+    }
+  };
+
+  // Hàm để hiển thị ngày tháng an toàn
+  const formatDate = (date) => {
+    try {
+      if (!date) return 'N/A';
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate)) return 'Ngày không hợp lệ';
+      return parsedDate.toLocaleDateString('vi-VN');
+    } catch (err) {
+      console.error('Lỗi khi định dạng ngày:', err);
+      return 'Lỗi';
+    }
+  };
+
+  // Dịch trạng thái đặt phòng sang tiếng Việt
+  const translateStatus = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return 'Đang Chờ';
+      case 'CONFIRMED':
+        return 'Đã Xác Nhận';
+      case 'CHECKED_IN':
+        return 'Đã Nhận Phòng';
+      case 'CHECKED_OUT':
+        return 'Đã Trả Phòng';
+      case 'CANCELLED':
+        return 'Đã Hủy';
+      default:
+        return status;
     }
   };
 
@@ -587,142 +740,185 @@ useEffect(() => {
     <div className="container">
       <DashboardContainer>
         <DashboardHeader>
-          <DashboardTitle>Employee Dashboard</DashboardTitle>
-          <p>Welcome, {employee?.eName || 'Employee'}!</p>
+          <DashboardTitle>Bảng Điều Khiển Nhân Viên</DashboardTitle>
+          <p>Xin chào, {employee?.eName || 'Nhân Viên'}!</p>
         </DashboardHeader>
 
         {employee && (
           <EmployeeInfo>
             <EmployeeDetails>
-              <p><strong>Employee ID:</strong> {employee.employeeID}</p>
+              <p><strong>Mã Nhân Viên:</strong> {employee.employeeID}</p>
               <p><strong>Email:</strong> {employee.email}</p>
-              <p><strong>Phone:</strong> {employee.phone}</p>
-              <p><strong>Hire Date:</strong> {new Date(employee.hireDate).toLocaleDateString()}</p>
+              <p><strong>Số Điện Thoại:</strong> {employee.phone}</p>
+              <p><strong>Ngày Tuyển Dụng:</strong> {new Date(employee.hireDate).toLocaleDateString('vi-VN')}</p>
             </EmployeeDetails>
             <ActionButton onClick={handleLogout} danger>
-              <FaSignOutAlt /> Logout
+              <FaSignOutAlt /> Đăng Xuất
             </ActionButton>
           </EmployeeInfo>
         )}
 
         <DashboardContent>
+          {/* Search Section for Check-in */}
+          <SearchSection>
+            <h3>Nhận Phòng Khách Hàng Theo Mã Đặt Phòng</h3>
+            <SearchForm onSubmit={handleSearchBooking}>
+              <SearchInput
+                type="text"
+                value={searchBookingId}
+                onChange={(e) => setSearchBookingId(e.target.value)}
+                placeholder="Nhập Mã Đặt Phòng"
+                required
+              />
+              <SearchButton type="submit">
+                <FaSearch /> Tìm Kiếm
+              </SearchButton>
+            </SearchForm>
+
+            {searchError && <ErrorMessage>{searchError}</ErrorMessage>}
+
+            {searchedBooking && (
+              <BookingInfo>
+                <h4>Chi Tiết Đặt Phòng</h4>
+                <p><strong>Mã Đặt Phòng:</strong> {searchedBooking.bookingID}</p>
+                <p><strong>Khách Hàng:</strong> {searchedBooking.fullName}</p>
+                <p><strong>Mã Phòng:</strong> {searchedBooking.roomID}</p>
+                <p><strong>Ngày Nhận Phòng:</strong> {formatDate(searchedBooking.checkInDate)}</p>
+                <p><strong>Ngày Trả Phòng:</strong> {formatDate(searchedBooking.checkOutDate)}</p>
+                <p><strong>Phương Thức Thanh Toán:</strong> {searchedBooking.paymentMethod}</p>
+                <p><strong>Trạng Thái:</strong> <StatusBadge status={searchedBooking.bookingStatus}>{translateStatus(searchedBooking.bookingStatus)}</StatusBadge></p>
+                <SubmitButton onClick={() => openModal('checkIn', searchedBooking)}>
+                  <FaQrcode /> Xác Nhận Nhận Phòng
+                </SubmitButton>
+              </BookingInfo>
+            )}
+          </SearchSection>
+
           <TabContainer>
             <TabButtons>
               <TabButton 
-                $active={activeTab === 'pending'} 
-                onClick={() => setActiveTab('pending')}
+                $active={activeTab === 'PENDING'} 
+                onClick={() => setActiveTab('PENDING')}
               >
-                <FaCalendarAlt /> Pending Payment
+                <FaCalendarAlt /> Đang Chờ Thanh Toán
               </TabButton>
               <TabButton 
-                $active={activeTab === 'confirmed'} 
-                onClick={() => setActiveTab('confirmed')}
+                $active={activeTab === 'CONFIRMED'} 
+                onClick={() => setActiveTab('CONFIRMED')}
               >
-                <FaCheck /> Confirmed Payment
+                <FaCheck /> Đã Xác Nhận Thanh Toán
               </TabButton>
               <TabButton 
-                $active={activeTab === 'checkedIn'} 
-                onClick={() => setActiveTab('checkedIn')}
+                $active={activeTab === 'CHECKED_IN'} 
+                onClick={() => setActiveTab('CHECKED_IN')}
               >
-                <FaUser /> Checked-in Bookings
+                <FaUser /> Đặt Phòng Đã Nhận
               </TabButton>
               <TabButton 
-                $active={activeTab === 'all'} 
-                onClick={() => setActiveTab('all')}
+                $active={activeTab === 'CHECKED_OUT'} 
+                onClick={() => setActiveTab('CHECKED_OUT')}
               >
-                <FaCalendarAlt /> All Bookings
+                <FaSignOutAlt /> Đặt Phòng Đã Trả
+              </TabButton>
+              <TabButton 
+                $active={activeTab === 'ALL'} 
+                onClick={() => setActiveTab('ALL')}
+              >
+                <FaCalendarAlt /> Tất Cả Đặt Phòng
               </TabButton>
             </TabButtons>
 
-            {activeTab === 'pending' && (
+            {activeTab === 'PENDING' && (
               <TabContent>
-                <h3>Pending Payment (Cash Payments)</h3>
+                <h3>Đặt Phòng Đang Chờ Thanh Toán</h3>
                 {loading ? (
                   <LoadingSpinner />
                 ) : error ? (
                   <ErrorMessage>{error}</ErrorMessage>
                 ) : pendingBookings.length === 0 ? (
-                  <p>No pending bookings found.</p>
+                  <p>Không tìm thấy đặt phòng đang chờ thanh toán.</p>
                 ) : (
-                  <Table>
-                    <thead>
-                      <tr>
-                        <Th>Booking ID</Th>
-                        <Th>Customer</Th>
-                        <Th>Room ID</Th>
-                        <Th>Check-in Date</Th>
-                        <Th>Check-out Date</Th>
-                        <Th>Payment Method</Th>
-                        <Th>Status</Th>
-                        <Th>Actions</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingBookings.map(booking => (
-                        <tr key={booking.bookingID}>
-                          <Td>{booking.bookingID}</Td>
-                          <Td>{booking.fullName}</Td>
-                          <Td>{booking.roomID}</Td>
-                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
-                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
-                          <Td>{booking.paymentMethod}</Td>
-                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
-                          <Td>
-                            <ActionButton onClick={() => openModal('confirmPayment', booking)}>
-                              <FaCheck /> Confirm Payment
-                            </ActionButton>
-                            <ActionButton danger onClick={() => openModal('cancel', booking)}>
-                              <FaTimes /> Cancel
-                            </ActionButton>
-                          </Td>
+                  <>
+                    <p>Tìm thấy {pendingBookings.length} đặt phòng đang chờ thanh toán.</p>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <Th>Mã Đặt Phòng</Th>
+                          <Th>Khách Hàng</Th>
+                          <Th>Mã Phòng</Th>
+                          <Th>Ngày Nhận Phòng</Th>
+                          <Th>Ngày Trả Phòng</Th>
+                          <Th>Phương Thức Thanh Toán</Th>
+                          <Th>Trạng Thái</Th>
+                          <Th>Hành Động</Th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </Table>
+                      </thead>
+                      <tbody>
+                        {pendingBookings.map(booking => {
+                          try {
+                            return (
+                              <tr key={booking.bookingID}>
+                                <Td>{booking.bookingID || 'N/A'}</Td>
+                                <Td>{booking.fullName || 'N/A'}</Td>
+                                <Td>{booking.roomID || 'N/A'}</Td>
+                                <Td>{formatDate(booking.checkInDate)}</Td>
+                                <Td>{formatDate(booking.checkOutDate)}</Td>
+                                <Td>{booking.paymentMethod || 'N/A'}</Td>
+                                <Td><StatusBadge status={booking.bookingStatus}>{translateStatus(booking.bookingStatus)}</StatusBadge></Td>
+                                <Td>
+                                  <ActionButton onClick={() => openModal('confirmPayment', booking)}>
+                                    <FaCheck /> Xác Nhận Thanh Toán
+                                  </ActionButton>
+                                </Td>
+                              </tr>
+                            );
+                          } catch (err) {
+                            console.error(`Lỗi khi hiển thị đặt phòng ${booking.bookingID}:`, err);
+                            return null;
+                          }
+                        })}
+                      </tbody>
+                    </Table>
+                  </>
                 )}
               </TabContent>
             )}
 
-            {activeTab === 'confirmed' && (
+            {activeTab === 'CONFIRMED' && (
               <TabContent>
-                <h3>Confirmed Bookings (Awaiting Check-in)</h3>
+                <h3>Đặt Phòng Đã Xác Nhận (Đang Chờ Nhận Phòng)</h3>
                 {loading ? (
                   <LoadingSpinner />
                 ) : error ? (
                   <ErrorMessage>{error}</ErrorMessage>
                 ) : confirmedBookings.length === 0 ? (
-                  <p>No confirmed bookings found.</p>
+                  <p>Không tìm thấy đặt phòng đã xác nhận.</p>
                 ) : (
                   <Table>
                     <thead>
                       <tr>
-                        <Th>Booking ID</Th>
-                        <Th>Customer</Th>
-                        <Th>Room ID</Th>
-                        <Th>Check-in Date</Th>
-                        <Th>Check-out Date</Th>
-                        <Th>Payment Method</Th>
-                        <Th>Status</Th>
-                        <Th>Actions</Th>
+                        <Th>Mã Đặt Phòng</Th>
+                        <Th>Khách Hàng</Th>
+                        <Th>Mã Phòng</Th>
+                        <Th>Ngày Nhận Phòng</Th>
+                        <Th>Ngày Trả Phòng</Th>
+                        <Th>Phương Thức Thanh Toán</Th>
+                        <Th>Trạng Thái</Th>
+                        <Th>Hành Động</Th>
                       </tr>
                     </thead>
                     <tbody>
                       {confirmedBookings.map(booking => (
                         <tr key={booking.bookingID}>
-                          <Td>{booking.bookingID}</Td>
-                          <Td>{booking.fullName}</Td>
-                          <Td>{booking.roomID}</Td>
-                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
-                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
-                          <Td>{booking.paymentMethod}</Td>
-                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
+                          <Td>{booking.bookingID || 'N/A'}</Td>
+                          <Td>{booking.fullName || 'N/A'}</Td>
+                          <Td>{booking.roomID || 'N/A'}</Td>
+                          <Td>{formatDate(booking.checkInDate)}</Td>
+                          <Td>{formatDate(booking.checkOutDate)}</Td>
+                          <Td>{booking.paymentMethod || 'N/A'}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{translateStatus(booking.bookingStatus)}</StatusBadge></Td>
                           <Td>
-                            <ActionButton onClick={() => openModal('checkIn', booking)}>
-                              <FaQrcode /> Check-in
-                            </ActionButton>
-                            <ActionButton danger onClick={() => openModal('cancel', booking)}>
-                              <FaTimes /> Cancel
-                            </ActionButton>
+                            {/* Không cần nút Nhận Phòng ở đây vì đã có tìm kiếm */}
                           </Td>
                         </tr>
                       ))}
@@ -732,45 +928,42 @@ useEffect(() => {
               </TabContent>
             )}
 
-            {activeTab === 'checkedIn' && (
+            {activeTab === 'CHECKED_IN' && (
               <TabContent>
-                <h3>Checked-in Bookings (Awaiting Check-out)</h3>
+                <h3>Đặt Phòng Đã Nhận (Đang Chờ Trả Phòng)</h3>
                 {loading ? (
                   <LoadingSpinner />
                 ) : error ? (
                   <ErrorMessage>{error}</ErrorMessage>
                 ) : checkedInBookings.length === 0 ? (
-                  <p>No checked-in bookings found.</p>
+                  <p>Không tìm thấy đặt phòng đã nhận.</p>
                 ) : (
                   <Table>
                     <thead>
                       <tr>
-                        <Th>Booking ID</Th>
-                        <Th>Customer</Th>
-                        <Th>Room ID</Th>
-                        <Th>Check-in Date</Th>
-                        <Th>Check-out Date</Th>
-                        <Th>Payment Method</Th>
-                        <Th>Status</Th>
-                        <Th>Actions</Th>
+                        <Th>Mã Đặt Phòng</Th>
+                        <Th>Khách Hàng</Th>
+                        <Th>Mã Phòng</Th>
+                        <Th>Ngày Nhận Phòng</Th>
+                        <Th>Ngày Trả Phòng</Th>
+                        <Th>Phương Thức Thanh Toán</Th>
+                        <Th>Trạng Thái</Th>
+                        <Th>Hành Động</Th>
                       </tr>
                     </thead>
                     <tbody>
                       {checkedInBookings.map(booking => (
                         <tr key={booking.bookingID}>
-                          <Td>{booking.bookingID}</Td>
-                          <Td>{booking.fullName}</Td>
-                          <Td>{booking.roomID}</Td>
-                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
-                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
-                          <Td>{booking.paymentMethod}</Td>
-                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
+                          <Td>{booking.bookingID || 'N/A'}</Td>
+                          <Td>{booking.fullName || 'N/A'}</Td>
+                          <Td>{booking.roomID || 'N/A'}</Td>
+                          <Td>{formatDate(booking.checkInDate)}</Td>
+                          <Td>{formatDate(booking.checkOutDate)}</Td>
+                          <Td>{booking.paymentMethod || 'N/A'}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{translateStatus(booking.bookingStatus)}</StatusBadge></Td>
                           <Td>
                             <ActionButton onClick={() => openModal('checkOut', booking)}>
-                              <FaSignOutAlt /> Check-out
-                            </ActionButton>
-                            <ActionButton danger onClick={() => openModal('cancel', booking)}>
-                              <FaTimes /> Cancel
+                              <FaSignOutAlt /> Trả Phòng
                             </ActionButton>
                           </Td>
                         </tr>
@@ -781,58 +974,92 @@ useEffect(() => {
               </TabContent>
             )}
 
-            {activeTab === 'all' && (
+            {activeTab === 'CHECKED_OUT' && (
               <TabContent>
-                <h3>All Bookings</h3>
+                <h3>Đặt Phòng Đã Trả</h3>
+                {loading ? (
+                  <LoadingSpinner />
+                ) : error ? (
+                  <ErrorMessage>{error}</ErrorMessage>
+                ) : checkedOutBookings.length === 0 ? (
+                  <p>Không tìm thấy đặt phòng đã trả.</p>
+                ) : (
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Mã Đặt Phòng</Th>
+                        <Th>Khách Hàng</Th>
+                        <Th>Mã Phòng</Th>
+                        <Th>Ngày Nhận Phòng</Th>
+                        <Th>Ngày Trả Phòng</Th>
+                        <Th>Phương Thức Thanh Toán</Th>
+                        <Th>Trạng Thái</Th>
+                        <Th>Hành Động</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {checkedOutBookings.map(booking => (
+                        <tr key={booking.bookingID}>
+                          <Td>{booking.bookingID || 'N/A'}</Td>
+                          <Td>{booking.fullName || 'N/A'}</Td>
+                          <Td>{booking.roomID || 'N/A'}</Td>
+                          <Td>{formatDate(booking.checkInDate)}</Td>
+                          <Td>{formatDate(booking.checkOutDate)}</Td>
+                          <Td>{booking.paymentMethod || 'N/A'}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{translateStatus(booking.bookingStatus)}</StatusBadge></Td>
+                          <Td>
+                            {/* Không có hành động cho CHECKED_OUT */}
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </TabContent>
+            )}
+
+            {activeTab === 'ALL' && (
+              <TabContent>
+                <h3>Tất Cả Đặt Phòng</h3>
                 {loading ? (
                   <LoadingSpinner />
                 ) : error ? (
                   <ErrorMessage>{error}</ErrorMessage>
                 ) : allBookings.length === 0 ? (
-                  <p>No bookings found.</p>
+                  <p>Không tìm thấy đặt phòng nào.</p>
                 ) : (
                   <Table>
                     <thead>
                       <tr>
-                        <Th>Booking ID</Th>
-                        <Th>Customer</Th>
-                        <Th>Room ID</Th>
-                        <Th>Check-in Date</Th>
-                        <Th>Check-out Date</Th>
-                        <Th>Payment Method</Th>
-                        <Th>Status</Th>
-                        <Th>Actions</Th>
+                        <Th>Mã Đặt Phòng</Th>
+                        <Th>Khách Hàng</Th>
+                        <Th>Mã Phòng</Th>
+                        <Th>Ngày Nhận Phòng</Th>
+                        <Th>Ngày Trả Phòng</Th>
+                        <Th>Phương Thức Thanh Toán</Th>
+                        <Th>Trạng Thái</Th>
+                        <Th>Hành Động</Th>
                       </tr>
                     </thead>
                     <tbody>
                       {allBookings.map(booking => (
                         <tr key={booking.bookingID}>
-                          <Td>{booking.bookingID}</Td>
-                          <Td>{booking.fullName}</Td>
-                          <Td>{booking.roomID}</Td>
-                          <Td>{new Date(booking.checkInDate).toLocaleDateString()}</Td>
-                          <Td>{new Date(booking.checkOutDate).toLocaleDateString()}</Td>
-                          <Td>{booking.paymentMethod}</Td>
-                          <Td><StatusBadge status={booking.bookingStatus}>{booking.bookingStatus}</StatusBadge></Td>
+                          <Td>{booking.bookingID || 'N/A'}</Td>
+                          <Td>{booking.fullName || 'N/A'}</Td>
+                          <Td>{booking.roomID || 'N/A'}</Td>
+                          <Td>{formatDate(booking.checkInDate)}</Td>
+                          <Td>{formatDate(booking.checkOutDate)}</Td>
+                          <Td>{booking.paymentMethod || 'N/A'}</Td>
+                          <Td><StatusBadge status={booking.bookingStatus}>{translateStatus(booking.bookingStatus)}</StatusBadge></Td>
                           <Td>
-                            {booking.bookingStatus === 'Pending' && booking.paymentMethod === 'Cash' && (
+                            {booking.bookingStatus === 'PENDING' && (
                               <ActionButton onClick={() => openModal('confirmPayment', booking)}>
-                                <FaCheck /> Confirm Payment
+                                <FaCheck /> Xác Nhận Thanh Toán
                               </ActionButton>
                             )}
-                            {booking.bookingStatus === 'Confirmed' && (
-                              <ActionButton onClick={() => openModal('checkIn', booking)}>
-                                <FaQrcode /> Check-in
-                              </ActionButton>
-                            )}
-                            {booking.bookingStatus === 'Checked-in' && (
+                            {booking.bookingStatus === 'CHECKED_IN' && (
                               <ActionButton onClick={() => openModal('checkOut', booking)}>
-                                <FaSignOutAlt /> Check-out
-                              </ActionButton>
-                            )}
-                            {booking.bookingStatus !== 'Checked-out' && booking.bookingStatus !== 'Cancelled' && (
-                              <ActionButton danger onClick={() => openModal('cancel', booking)}>
-                                <FaTimes /> Cancel
+                                <FaSignOutAlt /> Trả Phòng
                               </ActionButton>
                             )}
                           </Td>
@@ -852,10 +1079,9 @@ useEffect(() => {
             <ModalContent>
               <ModalHeader>
                 <ModalTitle>
-                  {modalType === 'confirmPayment' && 'Confirm Payment'}
-                  {modalType === 'checkIn' && 'Check-in Customer'}
-                  {modalType === 'checkOut' && 'Check-out Customer'}
-                  {modalType === 'cancel' && 'Cancel Booking'}
+                  {modalType === 'confirmPayment' && 'Xác Nhận Thanh Toán'}
+                  {modalType === 'checkIn' && 'Nhận Phòng Khách Hàng'}
+                  {modalType === 'checkOut' && 'Trả Phòng Khách Hàng'}
                 </ModalTitle>
                 <CloseButton onClick={closeModal}><FaTimes /></CloseButton>
               </ModalHeader>
@@ -864,46 +1090,27 @@ useEffect(() => {
 
               {modalType === 'confirmPayment' && (
                 <div>
-                  <p>Confirm that the customer has paid for booking <strong>{selectedBooking.bookingID}</strong> in cash.</p>
+                  <p>Xác nhận rằng khách hàng đã thanh toán cho đặt phòng <strong>{selectedBooking.bookingID}</strong>.</p>
                   <SubmitButton onClick={handleConfirmPayment} disabled={modalLoading}>
-                    {modalLoading ? <FaSpinner className="spinner" /> : <FaCheck />} Confirm Payment
+                    {modalLoading ? <FaSpinner className="spinner" /> : <FaCheck />} Xác Nhận Thanh Toán
                   </SubmitButton>
                 </div>
               )}
 
               {modalType === 'checkIn' && (
                 <div>
-                  <FormGroup>
-                    <Label htmlFor="checkInCode">Check-in Code</Label>
-                    <Input
-                      type="text"
-                      id="checkInCode"
-                      value={checkInCode}
-                      onChange={(e) => setCheckInCode(e.target.value)}
-                      placeholder="Enter check-in code"
-                      required
-                    />
-                  </FormGroup>
-                  <SubmitButton onClick={handleCheckIn} disabled={modalLoading || !checkInCode}>
-                    {modalLoading ? <FaSpinner className="spinner" /> : <FaQrcode />} Verify and Check-in
+                  <p>Xác nhận nhận phòng cho đặt phòng <strong>{selectedBooking.bookingID}</strong>.</p>
+                  <SubmitButton onClick={handleCheckIn} disabled={modalLoading}>
+                    {modalLoading ? <FaSpinner className="spinner" /> : <FaQrcode />} Xác Nhận Nhận Phòng
                   </SubmitButton>
                 </div>
               )}
 
               {modalType === 'checkOut' && (
                 <div>
-                  <p>Confirm that the customer for booking <strong>{selectedBooking.bookingID}</strong> has checked out.</p>
+                  <p>Xác nhận rằng khách hàng của đặt phòng <strong>{selectedBooking.bookingID}</strong> đã trả phòng.</p>
                   <SubmitButton onClick={handleCheckOut} disabled={modalLoading}>
-                    {modalLoading ? <FaSpinner className="spinner" /> : <FaSignOutAlt />} Confirm Check-out
-                  </SubmitButton>
-                </div>
-              )}
-
-              {modalType === 'cancel' && (
-                <div>
-                  <p>Are you sure you want to cancel booking <strong>{selectedBooking.bookingID}</strong>?</p>
-                  <SubmitButton onClick={handleCancelBooking} disabled={modalLoading}>
-                    {modalLoading ? <FaSpinner className="spinner" /> : <FaTimes />} Cancel Booking
+                    {modalLoading ? <FaSpinner className="spinner" /> : <FaSignOutAlt />} Xác Nhận Trả Phòng
                   </SubmitButton>
                 </div>
               )}

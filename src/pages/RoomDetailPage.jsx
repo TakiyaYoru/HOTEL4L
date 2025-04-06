@@ -35,14 +35,14 @@ function RoomDetailPage() {
           services.api.room.fetchRoomTypes()
         ]);
         
-        console.log('API Rooms Data:', allRoomsData);
-        console.log('API Room Types Data:', roomTypesData);
+        console.log('Dữ liệu phòng từ API:', allRoomsData);
+        console.log('Dữ liệu loại phòng từ API:', roomTypesData);
         
         // Tìm phòng theo ID
         const roomData = allRoomsData.find(room => room.roomID === id);
         
         if (!roomData) {
-          setError('Room not found');
+          setError('Không tìm thấy phòng');
           setLoading(false);
           return;
         }
@@ -90,10 +90,10 @@ function RoomDetailPage() {
             size: roomType.area,
             status: room.roomStatus,
             roomTypeId: roomType.rTypeID,
-            bed: roomType.rTypeID === ROOM_TYPES.TWIN ? 'Twin Beds' : 'King Bed',
-            view: roomType.rTypeID === ROOM_TYPES.KING || roomType.rTypeID === ROOM_TYPES.FAMILY ? 'Ocean View' : 'City View',
+            bed: roomType.rTypeID === ROOM_TYPES.TWIN ? 'Hai Giường Đơn' : 'Giường King',
+            view: roomType.rTypeID === ROOM_TYPES.KING || roomType.rTypeID === ROOM_TYPES.FAMILY ? 'Hướng Biển' : 'Hướng Thành Phố',
             images: [imagePath1, imagePath2],
-            description: `Experience luxury and comfort in our ${roomType.typeName.replace('_', ' ')}. This spacious ${roomType.area} sqft room can accommodate up to ${roomType.maxGuests} guests.`
+            description: `Trải nghiệm sự sang trọng và thoải mái tại ${roomType.typeName.replace('_', ' ')} của chúng tôi. Căn phòng rộng ${roomType.area} mét vuông này có thể chứa tối đa ${roomType.maxGuests} khách.`
           };
         };
         
@@ -119,21 +119,21 @@ function RoomDetailPage() {
           
           // Lấy dịch vụ theo loại phòng
           const servicesList = await services.api.service.fetchServicesByRoomType(roomTypeId);
-          console.log(`Services for room type ${roomTypeId}:`, servicesList);
+          console.log(`Dịch vụ cho loại phòng ${roomTypeId}:`, servicesList);
           setRoomServices(servicesList || []);
           
           // Lấy tiện nghi theo loại phòng
           const amenities = await services.api.service.fetchAmenitiesByRoomType(roomTypeId);
-          console.log(`Amenities for room type ${roomTypeId}:`, amenities);
+          console.log(`Tiện nghi cho loại phòng ${roomTypeId}:`, amenities);
           setRoomAmenities(amenities || []);
         } catch (err) {
-          console.error('Error fetching room services and amenities:', err);
+          console.error('Lỗi khi tải dịch vụ và tiện nghi của phòng:', err);
           // Không set error để tránh ảnh hưởng đến việc hiển thị phòng
         }
         
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching room data:', err);
+        console.error('Lỗi khi tải dữ liệu phòng:', err);
         setError(services.utils.api.handleApiError(err));
         setLoading(false);
       }
@@ -146,7 +146,7 @@ function RoomDetailPage() {
     return (
       <div className="container">
         <div className="loading-container" style={{ textAlign: 'center', padding: '50px 0' }}>
-          <h3>Loading room details...</h3>
+          <h3>Đang tải chi tiết phòng...</h3>
         </div>
       </div>
     );
@@ -156,7 +156,7 @@ function RoomDetailPage() {
     return (
       <div className="container">
         <div className="error-container" style={{ textAlign: 'center', padding: '50px 0' }}>
-          <h3>Error</h3>
+          <h3>Lỗi</h3>
           <p>{error}</p>
           <button 
             className="btn" 
@@ -171,7 +171,7 @@ function RoomDetailPage() {
               marginTop: '20px'
             }}
           >
-            Try Again
+            Thử Lại
           </button>
         </div>
       </div>
@@ -182,8 +182,8 @@ function RoomDetailPage() {
     return (
       <div className="container">
         <div className="not-found-container" style={{ textAlign: 'center', padding: '50px 0' }}>
-          <h3>Room Not Found</h3>
-          <p>The room you're looking for doesn't exist or has been removed.</p>
+          <h3>Không Tìm Thấy Phòng</h3>
+          <p>Phòng bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
           <Link 
             to="/rooms" 
             style={{ 
@@ -196,7 +196,7 @@ function RoomDetailPage() {
               marginTop: '20px'
             }}
           >
-            Browse All Rooms
+            Xem Tất Cả Phòng
           </Link>
         </div>
       </div>
@@ -227,11 +227,11 @@ function RoomDetailPage() {
       );
 
       if (!availability.isAvailable) {
-        setError('Room is not available for the selected dates');
+        setError('Phòng không khả dụng cho các ngày đã chọn');
         return;
       }
     } catch (err) {
-      console.error('Error checking room availability:', err);
+      console.error('Lỗi khi kiểm tra tính khả dụng của phòng:', err);
       setError(services.utils.api.handleApiError(err));
       return;
     }
@@ -262,12 +262,26 @@ function RoomDetailPage() {
       <div className="room-detail-container">
         <div className="room-header">
           <div className="room-title">
-            <h1>{room.name}</h1>
-            <p>{room.type} Room</p>
-            <p className="room-id">Room ID: {room.id}</p>
+            <h1>
+              {room.name === 'Single Room' ? 'Phòng Đơn' :
+               room.name === 'Double Room' ? 'Phòng Đôi' :
+               room.name === 'Twin Room' ? 'Phòng Hai Giường' :
+               room.name === 'King Room' ? 'Phòng King' :
+               room.name === 'Family Room' ? 'Phòng Gia Đình' :
+               room.name}
+            </h1>
+            <p>
+              {room.type === 'Single Room' ? 'Phòng Đơn' :
+               room.type === 'Double Room' ? 'Phòng Đôi' :
+               room.type === 'Twin Room' ? 'Phòng Hai Giường' :
+               room.type === 'King Room' ? 'Phòng King' :
+               room.type === 'Family Room' ? 'Phòng Gia Đình' :
+               room.type}
+            </p>
+            <p className="room-id">Mã Phòng: {room.id}</p>
           </div>
           <div className="room-price">
-            ${services.utils.format.formatCurrency(room.price)} <span>/ night</span>
+            {services.utils.format.formatCurrency(room.price)}<span>/đêm</span>
           </div>
         </div>
         
@@ -280,16 +294,16 @@ function RoomDetailPage() {
         
         <div className="room-content">
           <div className="room-description">
-            <h2>Room Description</h2>
+            <h2>Mô Tả Phòng</h2>
             <p>{room.description}</p>
             
             <div className="room-features-container">
               <div className="room-features">
-                <h3>Room Features</h3>
+                <h3>Đặc Điểm Phòng</h3>
                 <div className="features-list">
                   <div>
                     <FaUsers />
-                    <span>{room.capacity} {room.capacity === 1 ? 'Guest' : 'Guests'}</span>
+                    <span>{room.capacity} {room.capacity === 1 ? 'Khách' : 'Khách'}</span>
                   </div>
                   <div>
                     <FaBed />
@@ -297,11 +311,11 @@ function RoomDetailPage() {
                   </div>
                   <div>
                     <FaCheck />
-                    <span>{room.size} sqft</span>
+                    <span>{room.size} m²</span>
                   </div>
                   <div>
                     <FaCheck />
-                    <span>{room.view} View</span>
+                    <span>{room.view}</span>
                   </div>
                   
                   {/* Hiển thị các dịch vụ từ API */}
@@ -315,7 +329,7 @@ function RoomDetailPage() {
                   ) : (
                     <div>
                       <FaCheck />
-                      <span>No additional services</span>
+                      <span>Không có dịch vụ bổ sung</span>
                     </div>
                   )}
                 </div>
@@ -323,7 +337,7 @@ function RoomDetailPage() {
             </div>
             
             <div className="room-amenities">
-              <h3>Amenities</h3>
+              <h3>Tiện Nghi</h3>
               <div className="amenities-list">
                 {/* Hiển thị các tiện nghi từ API */}
                 {roomAmenities && roomAmenities.length > 0 ? (
@@ -338,35 +352,35 @@ function RoomDetailPage() {
                     {/* Hiển thị các tiện nghi mặc định nếu không có dữ liệu từ API */}
                     <div>
                       <FaWifi />
-                      <span>Free WiFi</span>
+                      <span>WiFi Miễn Phí</span>
                     </div>
                     <div>
                       <FaTv />
-                      <span>Flat-screen TV</span>
+                      <span>TV Màn Hình Phẳng</span>
                     </div>
                     <div>
                       <FaSnowflake />
-                      <span>Air Conditioning</span>
+                      <span>Máy Lạnh</span>
                     </div>
                     <div>
                       <FaUtensils />
-                      <span>Mini Bar</span>
+                      <span>Quầy Bar Mini</span>
                     </div>
                     <div>
                       <FaCheck />
-                      <span>Room Service</span>
+                      <span>Dịch Vụ Phòng</span>
                     </div>
                     <div>
                       <FaCheck />
-                      <span>Safe</span>
+                      <span>Két Sắt</span>
                     </div>
                     <div>
                       <FaCheck />
-                      <span>Coffee Maker</span>
+                      <span>Máy Pha Cà Phê</span>
                     </div>
                     <div>
                       <FaCheck />
-                      <span>Hairdryer</span>
+                      <span>Máy Sấy Tóc</span>
                     </div>
                   </>
                 )}
@@ -375,12 +389,12 @@ function RoomDetailPage() {
           </div>
           
           <div className="booking-card">
-            <h3 className="booking-title">Book This Room</h3>
+            <h3 className="booking-title">Đặt Phòng Này</h3>
             <form className="booking-form" onSubmit={handleBookNow}>
               <div className="booking-field">
                 <label>
                   <FaCalendarAlt style={{ marginRight: '5px' }} />
-                  Check In
+                  Ngày Nhận Phòng
                 </label>
                 <DatePicker
                   selected={checkInDate}
@@ -397,7 +411,7 @@ function RoomDetailPage() {
               <div className="booking-field">
                 <label>
                   <FaCalendarAlt style={{ marginRight: '5px' }} />
-                  Check Out
+                  Ngày Trả Phòng
                 </label>
                 <DatePicker
                   selected={checkOutDate}
@@ -414,7 +428,7 @@ function RoomDetailPage() {
               <div className="booking-field">
                 <label>
                   <FaUsers style={{ marginRight: '5px' }} />
-                  Guests
+                  Số Khách
                 </label>
                 <select
                   value={guests}
@@ -422,7 +436,7 @@ function RoomDetailPage() {
                 >
                   {Array.from({ length: room.capacity }, (_, i) => i + 1).map(num => (
                     <option key={num} value={num}>
-                      {num} {num === 1 ? 'Guest' : 'Guests'}
+                      {num} {num === 1 ? 'Khách' : 'Khách'}
                     </option>
                   ))}
                 </select>
@@ -430,39 +444,46 @@ function RoomDetailPage() {
               
               <div className="booking-total">
                 <div>
-                  <span>${services.utils.format.formatCurrency(room.price)} x {nights} nights</span>
-                  <span>${services.utils.format.formatCurrency(roomTotal)}</span>
+                  <span>{services.utils.format.formatCurrency(room.price)}$ x {nights} đêm</span>
+                  <span>{services.utils.format.formatCurrency(roomTotal)}$</span>
                 </div>
                 <div>
-                  <span>Tax (10%)</span>
-                  <span>${services.utils.format.formatCurrency(tax)}</span>
+                  <span>Thuế (10%)</span>
+                  <span>{services.utils.format.formatCurrency(tax)}$</span>
                 </div>
                 <div className="total">
-                  <span>Total</span>
-                  <span>${services.utils.format.formatCurrency(total)}</span>
+                  <span>Tổng Cộng</span>
+                  <span>{services.utils.format.formatCurrency(total)}$</span>
                 </div>
               </div>
               
               <button className="booking-button" type="submit">
-                Book Now
+                Đặt Ngay
               </button>
             </form>
           </div>
         </div>
         
         <section className="related-rooms">
-          <h3>You May Also Like</h3>
+          <h3>Các Phòng Bạn Có Thể Thích</h3>
           <div className="related-rooms-grid">
             {relatedRooms.map(relatedRoom => (
               <div className="related-room-card" key={relatedRoom.id}>
                 <img src={relatedRoom.images[0]} alt={relatedRoom.name} className="related-room-image" />
                 <div className="related-room-info">
-                  <h4>{relatedRoom.name}</h4>
+                  <h4>
+                    {relatedRoom.name === 'Single Room' ? 'Phòng Đơn' :
+                     relatedRoom.name === 'Double Room' ? 'Phòng Đôi' :
+                     relatedRoom.name === 'Twin Room' ? 'Phòng Hai Giường' :
+                     relatedRoom.name === 'King Room' ? 'Phòng King' :
+                     relatedRoom.name === 'Family Room' ? 'Phòng Gia Đình' :
+                     relatedRoom.name}
+                  </h4>
                   <div className="price">
-                    ${services.utils.format.formatCurrency(relatedRoom.price)}<span>/ night</span>
+                    {services.utils.format.formatCurrency(relatedRoom.price)}$<span>/đêm</span>
                   </div>
                   <Link to={`/rooms/${relatedRoom.id}`} className="btn-outline">
-                    View Details
+                    Xem Chi Tiết
                   </Link>
                 </div>
               </div>

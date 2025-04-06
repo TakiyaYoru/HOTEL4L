@@ -55,14 +55,14 @@ function RegisterPage() {
     setLoading(true);
     
     // Log dữ liệu trước khi gửi
-    console.log('Register form data:', formData);
+    console.log('Dữ liệu đăng ký:', formData);
     
     try {
       // Gọi API đăng ký nhưng không đăng nhập tự động
       await registerUser(formData);
     } catch (error) {
       // Ghi log lỗi nhưng không hiển thị cho người dùng
-      console.error('Register error:', error);
+      console.error('Lỗi đăng ký:', error);
     } finally {
       setSuccessMessage('Đăng ký thành công! Vui lòng đăng nhập.');
       setLoading(false);

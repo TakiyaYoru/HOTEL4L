@@ -55,13 +55,13 @@ function MyBookingDetailPage() {
         setError(null);
 
         // 1. Lấy thông tin khách hàng hiện tại (bao gồm bookings)
-        console.log('Fetching current customer data...');
+        console.log('Đang lấy dữ liệu khách hàng hiện tại...');
         const customerData = await services.api.customer.fetchCurrentCustomer();
-        console.log('Customer data received:', customerData);
+        console.log('Dữ liệu khách hàng nhận được:', customerData);
 
         if (!customerData || !customerData.bookings || customerData.bookings.length === 0) {
-          console.log('No bookings found for customer');
-          setError('No bookings found for this customer.');
+          console.log('Không tìm thấy đặt phòng nào cho khách hàng');
+          setError('Không tìm thấy đặt phòng nào cho khách hàng này.');
           setLoading(false);
           return;
         }
@@ -69,8 +69,8 @@ function MyBookingDetailPage() {
         // Kiểm tra xem bookingId có tồn tại trong danh sách bookings của khách hàng không
         const bookingExists = customerData.bookings.find(b => b && b.bookingID === bookingId);
         if (!bookingExists) {
-          console.log(`Booking ${bookingId} not found for this customer`);
-          setError('Booking not found.');
+          console.log(`Không tìm thấy đặt phòng ${bookingId} cho khách hàng này`);
+          setError('Không tìm thấy đặt phòng.');
           setLoading(false);
           return;
         }
@@ -78,19 +78,19 @@ function MyBookingDetailPage() {
         // 2. Gọi API ../Bookings/{bookingID} để lấy thông tin chi tiết của booking
         let bookingData = null;
         try {
-          console.log(`Fetching booking data for ${bookingId}...`);
+          console.log(`Đang lấy dữ liệu đặt phòng cho ${bookingId}...`);
           bookingData = await services.api.booking.fetchBookingById(bookingId);
-          console.log(`Booking data for ${bookingId}:`, bookingData);
+          console.log(`Dữ liệu đặt phòng cho ${bookingId}:`, bookingData);
         } catch (bookingError) {
-          console.error(`Error fetching booking data for ${bookingId}:`, bookingError);
-          setError('Failed to fetch booking data.');
+          console.error(`Lỗi khi lấy dữ liệu đặt phòng cho ${bookingId}:`, bookingError);
+          setError('Không thể lấy dữ liệu đặt phòng.');
           setLoading(false);
           return;
         }
 
         if (!bookingData) {
-          console.log(`No booking data found for ${bookingId}`);
-          setError('Booking not found.');
+          console.log(`Không tìm thấy dữ liệu đặt phòng cho ${bookingId}`);
+          setError('Không tìm thấy đặt phòng.');
           setLoading(false);
           return;
         }
@@ -100,8 +100,8 @@ function MyBookingDetailPage() {
         const detail = bookingDetails && bookingDetails.length > 0 ? bookingDetails[0] : null;
 
         if (!detail || !detail.detailID) {
-          console.log(`No details or detailID found for booking ${bookingId}`);
-          setError('Booking details not found.');
+          console.log(`Không tìm thấy chi tiết hoặc detailID cho đặt phòng ${bookingId}`);
+          setError('Không tìm thấy chi tiết đặt phòng.');
           setLoading(false);
           return;
         }
@@ -109,16 +109,16 @@ function MyBookingDetailPage() {
         // 4. Gọi API bookingDetails để lấy thông tin chi tiết
         let bookingDetailData = null;
         let roomId = detail.roomID || 'N/A';
-        let roomTypeName = 'Standard Room';
+        let roomTypeName = 'Phòng Tiêu Chuẩn';
         let roomTypeData = null;
 
         try {
-          console.log(`Fetching booking detail data for detailID ${detail.detailID}...`);
+          console.log(`Đang lấy dữ liệu chi tiết đặt phòng cho detailID ${detail.detailID}...`);
           bookingDetailData = await services.api.booking.fetchBookingDetailById(detail.detailID);
-          console.log(`Booking detail data for ${detail.detailID}:`, bookingDetailData);
+          console.log(`Dữ liệu chi tiết đặt phòng cho ${detail.detailID}:`, bookingDetailData);
 
           if (!bookingDetailData || !bookingDetailData.room) {
-            console.log(`No detailed data or room found for detailID ${detail.detailID}, using fallback`);
+            console.log(`Không tìm thấy dữ liệu chi tiết hoặc phòng cho detailID ${detail.detailID}, sử dụng giá trị dự phòng`);
             roomId = bookingDetailData?.roomID || detail.roomID || 'N/A';
           } else {
             roomId = bookingDetailData.roomID || 'N/A';
@@ -129,22 +129,29 @@ function MyBookingDetailPage() {
               const roomType = roomTypes.find(type => type.rTypeID === rTypeID);
               if (roomType && roomType.typeName) {
                 roomTypeName = roomType.typeName.replace('_', ' ');
+                // Dịch tên loại phòng sang tiếng Việt
+                roomTypeName = roomTypeName === 'Standard Room' ? 'Phòng Tiêu Chuẩn' :
+                               roomTypeName === 'Deluxe Room' ? 'Phòng Cao Cấp' :
+                               roomTypeName === 'Family Room' ? 'Phòng Gia Đình' :
+                               roomTypeName === 'Suite Room' ? 'Phòng Suite' :
+                               roomTypeName === 'Executive Suite' ? 'Căn Hộ Hạng Sang' :
+                               roomTypeName === 'Presidential Suite' ? 'Căn Hộ Tổng Thống' : roomTypeName;
                 roomTypeData = roomType;
               } else {
-                console.log(`Room type not found for rTypeID ${rTypeID}, using fallback`);
+                console.log(`Không tìm thấy loại phòng cho rTypeID ${rTypeID}, sử dụng giá trị dự phòng`);
               }
             }
           }
         } catch (detailError) {
-          console.error(`Error fetching booking detail for ${detail.detailID}:`, detailError);
+          console.error(`Lỗi khi lấy chi tiết đặt phòng cho ${detail.detailID}:`, detailError);
           if (roomId !== 'N/A') {
             const roomIdPrefix = roomId.substring(0, 3).toUpperCase();
-            if (roomIdPrefix === 'STD') roomTypeName = 'Standard Room';
-            else if (roomIdPrefix === 'DEL') roomTypeName = 'Deluxe Room';
-            else if (roomIdPrefix === 'FAM') roomTypeName = 'Family Room';
-            else if (roomIdPrefix === 'SUI') roomTypeName = 'Suite Room';
-            else if (roomIdPrefix === 'EXE') roomTypeName = 'Executive Suite';
-            else if (roomIdPrefix === 'PRE') roomTypeName = 'Presidential Suite';
+            if (roomIdPrefix === 'STD') roomTypeName = 'Phòng Tiêu Chuẩn';
+            else if (roomIdPrefix === 'DEL') roomTypeName = 'Phòng Cao Cấp';
+            else if (roomIdPrefix === 'FAM') roomTypeName = 'Phòng Gia Đình';
+            else if (roomIdPrefix === 'SUI') roomTypeName = 'Phòng Suite';
+            else if (roomIdPrefix === 'EXE') roomTypeName = 'Căn Hộ Hạng Sang';
+            else if (roomIdPrefix === 'PRE') roomTypeName = 'Căn Hộ Tổng Thống';
           }
         }
 
@@ -163,7 +170,7 @@ function MyBookingDetailPage() {
         const timeline = [
           {
             date: bookingData.bookingTime || new Date().toISOString(),
-            text: 'Booking created',
+            text: 'Đặt phòng đã được tạo',
             icon: 'FaCalendarAlt'
           }
         ];
@@ -171,7 +178,7 @@ function MyBookingDetailPage() {
         if (bookingData.paymentStatus) {
           timeline.push({
             date: bookingData.bookingTime || new Date().toISOString(),
-            text: 'Payment confirmed',
+            text: 'Thanh toán đã được xác nhận',
             icon: 'FaDollarSign'
           });
         }
@@ -191,11 +198,11 @@ function MyBookingDetailPage() {
           nights: nights || 1,
           total: bookingData.totalAmount || 0,
           status: status,
-          paymentMethod: bookingData.payment?.method || 'Credit Card',
-          paymentStatus: bookingData.paymentStatus ? 'Paid' : 'Pending',
+          paymentMethod: bookingData.payment?.method || 'Thẻ Tín Dụng',
+          paymentStatus: bookingData.paymentStatus ? 'Đã Thanh Toán' : 'Đang Chờ',
           bookingDate: bookingData.bookingTime,
           primaryGuest: {
-            fullName: customerData?.cName || 'Guest',
+            fullName: customerData?.cName || 'Khách',
             email: customerData?.email || 'guest@example.com',
             phone: customerData?.phone || 'N/A',
             address: customerData?.address || 'N/A',
@@ -204,7 +211,7 @@ function MyBookingDetailPage() {
             gender: customerData?.gender || 'N/A'
           },
           companions: detail.guest_BDetails?.filter(g => g.guestID !== customerData?.customerID).map(g => ({
-            fullName: g.guestInfo?.firstName + ' ' + g.guestInfo?.lastName || 'Guest',
+            fullName: g.guestInfo?.firstName + ' ' + g.guestInfo?.lastName || 'Khách',
             idCard: g.guestInfo?.idCard || 'N/A',
             dob: g.guestInfo?.dob || new Date().toISOString(),
             gender: g.guestInfo?.gender || 'N/A'
@@ -213,12 +220,12 @@ function MyBookingDetailPage() {
           timeline: timeline
         };
 
-        console.log('Processed booking:', processedBooking);
+        console.log('Đặt phòng đã xử lý:', processedBooking);
         setBooking(processedBooking);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching booking detail:', err);
-        setError('Failed to load booking details. Please try again later.');
+        console.error('Lỗi khi lấy chi tiết đặt phòng:', err);
+        setError('Không thể tải chi tiết đặt phòng. Vui lòng thử lại sau.');
         setLoading(false);
       }
     };
@@ -228,7 +235,7 @@ function MyBookingDetailPage() {
 
   // Xử lý hủy đặt phòng
   const handleCancelBooking = async () => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đặt phòng này không?')) {
       return;
     }
 
@@ -246,7 +253,7 @@ function MyBookingDetailPage() {
           ...prev.timeline,
           {
             date: new Date().toISOString(),
-            text: 'Booking cancelled',
+            text: 'Đặt phòng đã bị hủy',
             icon: 'FaTimesCircle'
           }
         ]
@@ -255,8 +262,8 @@ function MyBookingDetailPage() {
       setCancelSuccess(true);
       setCancelLoading(false);
     } catch (err) {
-      console.error('Error cancelling booking:', err);
-      setError('Failed to cancel booking. Please try again.');
+      console.error('Lỗi khi hủy đặt phòng:', err);
+      setError('Không thể hủy đặt phòng. Vui lòng thử lại.');
       setCancelLoading(false);
     }
   };
@@ -264,12 +271,15 @@ function MyBookingDetailPage() {
   // Format ngày
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return new Date(dateString).toLocaleDateString('vi-VN', options);
   };
 
   // Format trạng thái
   const formatStatus = (status) => {
-    return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending';
+    return status === 'confirmed' ? 'Đã Xác Nhận' :
+           status === 'pending' ? 'Đang Chờ' :
+           status === 'completed' ? 'Đã Hoàn Thành' :
+           status === 'cancelled' ? 'Đã Hủy' : 'Đang Chờ';
   };
 
   // Hiển thị icon cho timeline
@@ -297,27 +307,27 @@ function MyBookingDetailPage() {
               className="back-button" 
               onClick={() => navigate('/my-bookings')}
             >
-              <FaArrowLeft /> Back to My Bookings
+              <FaArrowLeft /> Quay Lại Đặt Phòng Của Tôi
             </button>
-            <h1>Booking Details</h1>
+            <h1>Chi Tiết Đặt Phòng</h1>
           </div>
         </div>
 
         {loading ? (
           <div className="loading-container">
             <FaSpinner className="loading-spinner" />
-            <p>Loading booking details...</p>
+            <p>Đang tải chi tiết đặt phòng...</p>
           </div>
         ) : error ? (
           <div className="error-container">
             <FaExclamationTriangle />
-            <h3>Error loading booking details</h3>
+            <h3>Lỗi khi tải chi tiết đặt phòng</h3>
             <p>{error}</p>
             <button 
               className="btn-primary"
               onClick={() => window.location.reload()}
             >
-              Try Again
+              Thử Lại
             </button>
           </div>
         ) : booking ? (
@@ -326,41 +336,41 @@ function MyBookingDetailPage() {
             {cancelSuccess && (
               <div className="success-message">
                 <FaCheckCircle />
-                <p>Booking cancelled successfully!</p>
+                <p>Hủy đặt phòng thành công!</p>
               </div>
             )}
 
             {/* Thông tin cơ bản */}
             <div className="detail-card">
               <div className="detail-header">
-                <h2>Booking Information</h2>
+                <h2>Thông Tin Đặt Phòng</h2>
               </div>
               
               <div className="detail-body">
                 <div className="booking-details">
                   <div className="booking-detail">
                     <FaHashtag className="booking-icon" />
-                    <span className="booking-detail-label">Booking ID:</span>
+                    <span className="booking-detail-label">Mã Đặt Phòng:</span>
                     <span>{booking.id}</span>
                   </div>
                   <div className="booking-detail">
                     <FaCalendarAlt className="booking-icon" />
-                    <span className="booking-detail-label">Booking Date:</span>
+                    <span className="booking-detail-label">Ngày Đặt Phòng:</span>
                     <span>{formatDate(booking.bookingDate)}</span>
                   </div>
                   <div className="booking-detail">
                     <FaDollarSign className="booking-icon" />
-                    <span className="booking-detail-label">Payment Method:</span>
+                    <span className="booking-detail-label">Phương Thức Thanh Toán:</span>
                     <span>{booking.paymentMethod}</span>
                   </div>
                   <div className="booking-detail">
                     <FaDollarSign className="booking-icon" />
-                    <span className="booking-detail-label">Payment Status:</span>
+                    <span className="booking-detail-label">Trạng Thái Thanh Toán:</span>
                     <span>{booking.paymentStatus}</span>
                   </div>
                   <div className="booking-detail">
                     <FaInfoCircle className="booking-icon" />
-                    <span className="booking-detail-label">Status:</span>
+                    <span className="booking-detail-label">Trạng Thái:</span>
                     <span>{formatStatus(booking.status)}</span>
                   </div>
                 </div>
@@ -370,24 +380,24 @@ function MyBookingDetailPage() {
             {/* Thông tin phòng */}
             <div className="detail-card">
               <div className="detail-header">
-                <h2>Room Information</h2>
+                <h2>Thông Tin Phòng</h2>
               </div>
               
               <div className="detail-body">
                 <div className="booking-details">
                   <div className="booking-detail">
                     <FaBed className="booking-icon" />
-                    <span className="booking-detail-label">Room Name:</span>
+                    <span className="booking-detail-label">Tên Phòng:</span>
                     <span>{booking.roomName.toUpperCase()}</span>
                   </div>
                   <div className="booking-detail">
                     <FaBed className="booking-icon" />
-                    <span className="booking-detail-label">Room ID:</span>
+                    <span className="booking-detail-label">Mã Phòng:</span>
                     <span>{booking.roomId}</span>
                   </div>
                   <div className="booking-detail">
                     <FaUsers className="booking-icon" />
-                    <span className="booking-detail-label">Guests:</span>
+                    <span className="booking-detail-label">Số Khách:</span>
                     <span>{booking.guests}</span>
                   </div>
                 </div>
@@ -397,35 +407,35 @@ function MyBookingDetailPage() {
             {/* Thông tin lịch trình */}
             <div className="detail-card">
               <div className="detail-header">
-                <h2>Stay Information</h2>
+                <h2>Thông Tin Lưu Trú</h2>
               </div>
               
               <div className="detail-body">
                 <div className="booking-details">
                   <div className="booking-detail">
                     <FaCalendarAlt className="booking-icon" />
-                    <span className="booking-detail-label">Check-in:</span>
-                    <span>{formatDate(booking.checkInDate)} at {booking.checkInTime}</span>
+                    <span className="booking-detail-label">Nhận Phòng:</span>
+                    <span>{formatDate(booking.checkInDate)} lúc {booking.checkInTime}</span>
                   </div>
                   <div className="booking-detail">
                     <FaCalendarAlt className="booking-icon" />
-                    <span className="booking-detail-label">Check-out:</span>
-                    <span>{formatDate(booking.checkOutDate)} at {booking.checkOutTime}</span>
+                    <span className="booking-detail-label">Trả Phòng:</span>
+                    <span>{formatDate(booking.checkOutDate)} lúc {booking.checkOutTime}</span>
                   </div>
                   <div className="booking-detail">
                     <FaClock className="booking-icon" />
-                    <span className="booking-detail-label">Duration:</span>
-                    <span>{booking.nights} nights</span>
+                    <span className="booking-detail-label">Thời Gian Lưu Trú:</span>
+                    <span>{booking.nights} đêm</span>
                   </div>
                   <div className="booking-detail">
                     <FaDollarSign className="booking-icon" />
-                    <span className="booking-detail-label">Price per night:</span>
-                    <span>${booking.price}</span>
+                    <span className="booking-detail-label">Giá Mỗi Đêm:</span>
+                    <span>{services.utils.format.formatCurrency(booking.price)}</span>
                   </div>
                   <div className="booking-detail">
                     <FaDollarSign className="booking-icon" />
-                    <span className="booking-detail-label">Total Amount:</span>
-                    <span>${booking.total}</span>
+                    <span className="booking-detail-label">Tổng Số Tiền:</span>
+                    <span>{services.utils.format.formatCurrency(booking.total)}</span>
                   </div>
                 </div>
               </div>
@@ -434,15 +444,15 @@ function MyBookingDetailPage() {
             {/* Thông tin khách hàng */}
             <div className="detail-card">
               <div className="detail-header">
-                <h2>Guest Information</h2>
+                <h2>Thông Tin Khách Hàng</h2>
               </div>
               
               <div className="detail-body">
-                <h3>Primary Guest</h3>
+                <h3>Khách Chính</h3>
                 <div className="booking-details">
                   <div className="booking-detail">
                     <FaUser className="booking-icon" />
-                    <span className="booking-detail-label">Full Name:</span>
+                    <span className="booking-detail-label">Họ và Tên:</span>
                     <span>{booking.primaryGuest.fullName}</span>
                   </div>
                   <div className="booking-detail">
@@ -452,35 +462,35 @@ function MyBookingDetailPage() {
                   </div>
                   <div className="booking-detail">
                     <FaPhone className="booking-icon" />
-                    <span className="booking-detail-label">Phone:</span>
+                    <span className="booking-detail-label">Số Điện Thoại:</span>
                     <span>{booking.primaryGuest.phone}</span>
                   </div>
                   <div className="booking-detail">
                     <FaIdCard className="booking-icon" />
-                    <span className="booking-detail-label">ID Card:</span>
+                    <span className="booking-detail-label">CMND/CCCD:</span>
                     <span>{booking.primaryGuest.idCard}</span>
                   </div>
                   <div className="booking-detail">
                     <FaMapMarkerAlt className="booking-icon" />
-                    <span className="booking-detail-label">Address:</span>
+                    <span className="booking-detail-label">Địa Chỉ:</span>
                     <span>{booking.primaryGuest.address}</span>
                   </div>
                 </div>
                 
                 {booking.companions && booking.companions.length > 0 && (
                   <>
-                    <h3>Accompanying Guests</h3>
+                    <h3>Khách Đi Cùng</h3>
                     {booking.companions.map((companion, index) => (
                       <div key={index} className="companion-info">
                         <div className="booking-details">
                           <div className="booking-detail">
                             <FaUser className="booking-icon" />
-                            <span className="booking-detail-label">Full Name:</span>
+                            <span className="booking-detail-label">Họ và Tên:</span>
                             <span>{companion.fullName}</span>
                           </div>
                           <div className="booking-detail">
                             <FaIdCard className="booking-icon" />
-                            <span className="booking-detail-label">ID Card:</span>
+                            <span className="booking-detail-label">CMND/CCCD:</span>
                             <span>{companion.idCard}</span>
                           </div>
                         </div>
@@ -491,7 +501,7 @@ function MyBookingDetailPage() {
                 
                 {booking.specialRequests && (
                   <>
-                    <h3>Special Requests</h3>
+                    <h3>Yêu Cầu Đặc Biệt</h3>
                     <div className="special-requests">
                       <p>{booking.specialRequests}</p>
                     </div>
@@ -503,7 +513,7 @@ function MyBookingDetailPage() {
             {/* Timeline */}
             <div className="detail-card">
               <div className="detail-header">
-                <h2>Booking Timeline</h2>
+                <h2>Lịch Sử Đặt Phòng</h2>
               </div>
               
               <div className="detail-body">
@@ -527,7 +537,7 @@ function MyBookingDetailPage() {
                       </div>
                       <div className="timeline-content">
                         <div className="timeline-date">{formatDate(new Date())}</div>
-                        <div className="timeline-text">Booking cancelled</div>
+                        <div className="timeline-text">Đặt phòng đã bị hủy</div>
                       </div>
                     </div>
                   )}
@@ -541,7 +551,7 @@ function MyBookingDetailPage() {
                 to={`/rooms/${booking.roomId}`} 
                 className="btn-primary"
               >
-                View Room
+                Xem Phòng
               </Link>
               
               {booking.status === 'confirmed' && !cancelSuccess && (
@@ -553,10 +563,10 @@ function MyBookingDetailPage() {
                   {cancelLoading ? (
                     <>
                       <FaSpinner className="loading-spinner" />
-                      Cancelling...
+                      Đang hủy...
                     </>
                   ) : (
-                    'Cancel Booking'
+                    'Hủy Đặt Phòng'
                   )}
                 </button>
               )}
@@ -566,7 +576,7 @@ function MyBookingDetailPage() {
                   to={`/rooms/${booking.roomId}`} 
                   className="btn-primary"
                 >
-                  Book Again
+                  Đặt Lại
                 </Link>
               )}
             </div>
@@ -574,10 +584,10 @@ function MyBookingDetailPage() {
         ) : (
           <div className="error-container">
             <FaExclamationTriangle />
-            <h3>Booking not found</h3>
-            <p>The booking you are looking for does not exist or has been removed.</p>
+            <h3>Không tìm thấy đặt phòng</h3>
+            <p>Đặt phòng bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
             <Link to="/my-bookings" className="btn-primary">
-              Back to My Bookings
+              Quay Lại Đặt Phòng Của Tôi
             </Link>
           </div>
         )}

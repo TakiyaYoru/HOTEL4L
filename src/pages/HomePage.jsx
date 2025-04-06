@@ -26,8 +26,8 @@ function HomePage() {
           fetchRoomTypes()
         ]);
         
-        console.log('API Rooms Data:', roomsData);
-        console.log('API Room Types Data:', roomTypesData);
+        console.log('Dữ liệu phòng từ API:', roomsData);
+        console.log('Dữ liệu loại phòng từ API:', roomTypesData);
         
         // Xử lý dữ liệu phòng từ API
         const processedRooms = roomsData.map(room => {
@@ -62,19 +62,28 @@ function HomePage() {
               imagePath2 = 'Images/Rooms/standard-room-2.jpg';
           }
           
+          // Dịch tên loại phòng sang tiếng Việt
+          const roomName = roomType.typeName.replace('_', ' ');
+          const translatedRoomName = roomName === 'Standard Room' ? 'Phòng Tiêu Chuẩn' :
+                                    roomName === 'Deluxe Room' ? 'Phòng Cao Cấp' :
+                                    roomName === 'Family Room' ? 'Phòng Gia Đình' :
+                                    roomName === 'Suite Room' ? 'Phòng Suite' :
+                                    roomName === 'Executive Suite' ? 'Căn Hộ Hạng Sang' :
+                                    roomName === 'Presidential Suite' ? 'Căn Hộ Tổng Thống' : roomName;
+          
           // Tạo đối tượng phòng với cấu trúc phù hợp cho frontend
           return {
             id: room.roomID,
-            name: roomType.typeName.replace('_', ' '),
-            type: roomType.typeName.replace('_', ' '),
+            name: translatedRoomName,
+            type: translatedRoomName,
             price: roomType.price,
             capacity: roomType.maxGuests,
             size: roomType.area,
             status: room.roomStatus,
             roomTypeId: roomType.rTypeID,
-            bed: roomType.rTypeID === 'TWN' ? 'Twin Beds' : 'King Bed',
+            bed: roomType.rTypeID === 'TWN' ? 'Hai Giường Đơn' : 'Giường King',
             images: [imagePath1, imagePath2],
-            description: `Experience luxury and comfort in our ${roomType.typeName.replace('_', ' ')}. This spacious ${roomType.area} sqft room can accommodate up to ${roomType.maxGuests} guests.`
+            description: `Trải nghiệm sự sang trọng và thoải mái tại ${translatedRoomName} của chúng tôi. Căn phòng rộng ${roomType.area} m² này có thể chứa tối đa ${roomType.maxGuests} khách.`
           };
         });
         
@@ -83,8 +92,8 @@ function HomePage() {
         setRoomTypes(roomTypesData);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load rooms. Please try again later.');
+        console.error('Lỗi khi lấy dữ liệu:', err);
+        setError('Không thể tải danh sách phòng. Vui lòng thử lại sau.');
         setLoading(false);
       }
     };
@@ -93,27 +102,27 @@ function HomePage() {
   }, []);
 
   const handleBookNow = () => {
-    // In a real app, this would navigate to the booking page with the selected dates and guests
-    console.log('Booking with:', { checkInDate, checkOutDate, guests });
+    // Trong ứng dụng thực tế, điều này sẽ chuyển hướng đến trang đặt phòng với ngày và số khách đã chọn
+    console.log('Đặt phòng với:', { checkInDate, checkOutDate, guests });
   };
   
   return (
     <>
       <section className="hero">
         <div className="hero-content">
-          <h1 className="hero-title">Experience Luxury Like Never Before</h1>
+          <h1 className="hero-title">Trải Nghiệm Sự Sang Trọng Chưa Từng Có</h1>
           <p className="hero-subtitle">
-            Indulge in the perfect blend of comfort, elegance, and exceptional service at our luxury hotel.
+            Đến với sự kết hợp hoàn hảo giữa sự thoải mái, thanh lịch và dịch vụ xuất sắc tại khách sạn sang trọng của chúng tôi.
           </p>
           <Link to="/rooms" className="btn">
-            Explore Our Rooms
+            Khám Phá Phòng Của Chúng Tôi
           </Link>
           
           <div className="booking-bar">
             <div className="booking-field">
               <label>
                 <FaCalendarAlt style={{ marginRight: '5px' }} />
-                Check In
+                Nhận Phòng
               </label>
               <DatePicker
                 selected={checkInDate}
@@ -129,7 +138,7 @@ function HomePage() {
             <div className="booking-field">
               <label>
                 <FaCalendarAlt style={{ marginRight: '5px' }} />
-                Check Out
+                Trả Phòng
               </label>
               <DatePicker
                 selected={checkOutDate}
@@ -145,19 +154,19 @@ function HomePage() {
             <div className="booking-field">
               <label>
                 <FaUsers style={{ marginRight: '5px' }} />
-                Guests
+                Số Khách
               </label>
               <select value={guests} onChange={e => setGuests(Number(e.target.value))}>
                 {[1, 2, 3, 4, 5, 6].map(num => (
                   <option key={num} value={num}>
-                    {num} {num === 1 ? 'Guest' : 'Guests'}
+                    {num} {num === 1 ? 'Khách' : 'Khách'}
                   </option>
                 ))}
               </select>
             </div>
             
             <button className="booking-button" onClick={handleBookNow}>
-              Check Availability
+              Kiểm Tra Tình Trạng Phòng
             </button>
           </div>
         </div>
@@ -165,16 +174,16 @@ function HomePage() {
       
       <section className="featured-rooms">
         <div className="container text-center">
-          <h2 className="section-title">Our Featured Rooms</h2>
-          <p>Experience the perfect blend of comfort and luxury in our carefully designed rooms.</p>
+          <h2 className="section-title">Phòng Nổi Bật Của Chúng Tôi</h2>
+          <p>Trải nghiệm sự kết hợp hoàn hảo giữa sự thoải mái và sang trọng trong những căn phòng được thiết kế tỉ mỉ của chúng tôi.</p>
           
           {loading ? (
             <div className="loading-container">
-              <h3>Loading...</h3>
+              <h3>Đang Tải...</h3>
             </div>
           ) : error ? (
             <div className="error-container">
-              <h3>Error</h3>
+              <h3>Lỗi</h3>
               <p>{error}</p>
             </div>
           ) : (
@@ -186,23 +195,23 @@ function HomePage() {
                     alt={room.name} 
                     className="related-room-image" 
                     onError={(e) => {
-                      console.error(`Error loading image: ${e.target.src}`);
-                      e.target.src = 'Images/Rooms/standard-room-1.jpg'; // Fallback image
+                      console.error(`Lỗi khi tải hình ảnh: ${e.target.src}`);
+                      e.target.src = 'Images/Rooms/standard-room-1.jpg'; // Hình ảnh dự phòng
                     }}
                   />
                   <div className="room-info">
                     <h3 className="room-name">{room.name}</h3>
                     <div className="room-price">
-                      ${room.price}<span>/ night</span>
+                      {room.price}đ <span>/ đêm</span>
                     </div>
                     <div className="room-features">
-                      <div>{room.size} sqft</div>
-                      <div>{room.capacity} {room.capacity === 1 ? 'Guest' : 'Guests'}</div>
+                      <div>{room.size} m²</div>
+                      <div>{room.capacity} {room.capacity === 1 ? 'Khách' : 'Khách'}</div>
                       <div>{room.bed}</div>
                     </div>
                     
                     <Link to={`/rooms/${room.id}`} className="btn-outline">
-                      View Details
+                      Xem Chi Tiết
                     </Link>
                   </div>
                 </div>
@@ -212,7 +221,7 @@ function HomePage() {
           
           <div style={{ marginTop: '40px' }}>
             <Link to="/rooms" className="btn">
-              View All Rooms
+              Xem Tất Cả Phòng
             </Link>
           </div>
         </div>
@@ -220,62 +229,62 @@ function HomePage() {
       
       <section className="services">
         <div className="container text-center">
-          <h2 className="section-title">Our Services</h2>
-          <p>We offer a wide range of services to make your stay comfortable and memorable.</p>
+          <h2 className="section-title">Dịch Vụ Của Chúng Tôi</h2>
+          <p>Chúng tôi cung cấp nhiều loại dịch vụ để đảm bảo kỳ nghỉ của bạn thoải mái và đáng nhớ.</p>
           
           <div className="services-grid">
             <div className="service-card">
               <div className="service-icon">
                 <FaConciergeBell />
               </div>
-              <h3 className="service-title">24/7 Room Service</h3>
-              <p>Our dedicated staff is available around the clock to cater to your needs and ensure a comfortable stay.</p>
+              <h3 className="service-title">Dịch Vụ Phòng 24/7</h3>
+              <p>Đội ngũ nhân viên tận tâm của chúng tôi sẵn sàng phục vụ bạn suốt ngày đêm để đảm bảo kỳ nghỉ thoải mái.</p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">
                 <FaSpa />
               </div>
-              <h3 className="service-title">Spa & Wellness</h3>
-              <p>Rejuvenate your body and mind with our premium spa treatments and wellness facilities.</p>
+              <h3 className="service-title">Spa & Chăm Sóc Sức Khỏe</h3>
+              <p>Tái tạo năng lượng cho cơ thể và tâm hồn với các liệu pháp spa cao cấp và cơ sở vật chất chăm sóc sức khỏe của chúng tôi.</p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">
                 <FaUtensils />
               </div>
-              <h3 className="service-title">Fine Dining</h3>
-              <p>Indulge in exquisite culinary experiences at our restaurants offering a variety of cuisines.</p>
+              <h3 className="service-title">Ẩm Thực Tinh Tế</h3>
+              <p>Thưởng thức những trải nghiệm ẩm thực tuyệt vời tại các nhà hàng của chúng tôi với đa dạng phong cách ẩm thực.</p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">
                 <FaSwimmingPool />
               </div>
-              <h3 className="service-title">Swimming Pool</h3>
-              <p>Take a refreshing dip in our swimming pool or relax by the poolside with your favorite drink.</p>
+              <h3 className="service-title">Hồ Bơi</h3>
+              <p>Tận hưởng cảm giác sảng khoái khi bơi trong hồ bơi của chúng tôi hoặc thư giãn bên hồ bơi với ly đồ uống yêu thích.</p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">
                 <FaUsers />
               </div>
-              <h3 className="service-title">Event Spaces</h3>
-              <p>Host your special events, meetings, and conferences in our elegant and well-equipped spaces.</p>
+              <h3 className="service-title">Không Gian Sự Kiện</h3>
+              <p>Tổ chức các sự kiện đặc biệt, cuộc họp và hội nghị tại không gian thanh lịch và được trang bị đầy đủ của chúng tôi.</p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">
                 <FaCalendarAlt />
               </div>
-              <h3 className="service-title">Tour Arrangements</h3>
-              <p>Explore the city and its attractions with our customized tour packages and expert guides.</p>
+              <h3 className="service-title">Tổ Chức Tour Du Lịch</h3>
+              <p>Khám phá thành phố và các điểm tham quan với các gói tour tùy chỉnh và hướng dẫn viên chuyên nghiệp của chúng tôi.</p>
             </div>
           </div>
           
           <div style={{ marginTop: '40px' }}>
             <Link to="/services" className="btn">
-              Explore All Services
+              Khám Phá Tất Cả Dịch Vụ
             </Link>
           </div>
         </div>
@@ -283,45 +292,45 @@ function HomePage() {
       
       <section className="testimonials">
         <div className="container text-center">
-          <h2 className="section-title">What Our Guests Say</h2>
-          <p>Read testimonials from our satisfied guests who have experienced our hospitality.</p>
+          <h2 className="section-title">Cảm Nhận Của Khách Hàng</h2>
+          <p>Đọc những cảm nhận từ các khách hàng hài lòng đã trải nghiệm dịch vụ của chúng tôi.</p>
           
           <div style={{ marginTop: '50px' }}>
             <div className="testimonial-card">
               <p className="testimonial-text">
-                "An absolutely amazing experience! The staff was incredibly attentive, the room was luxurious, and the amenities were top-notch. I can't wait to come back for another stay."
+                "Một trải nghiệm tuyệt vời! Nhân viên vô cùng chu đáo, phòng ốc sang trọng và tiện nghi hàng đầu. Tôi rất mong chờ được quay lại lần nữa."
               </p>
               <div className="testimonial-author">
                 <div className="author-image" style={{ backgroundColor: '#ddd' }}></div>
                 <div className="author-info">
                   <h4>Sarah Johnson</h4>
-                  <p>Business Traveler</p>
+                  <p>Khách Hàng Doanh Nhân</p>
                 </div>
               </div>
             </div>
             
             <div className="testimonial-card">
               <p className="testimonial-text">
-                "We celebrated our anniversary at this hotel and it was perfect in every way. The romantic dinner arrangement, the spa treatment, and the beautiful room with a view made it unforgettable."
+                "Chúng tôi đã kỷ niệm ngày cưới tại khách sạn này và mọi thứ đều hoàn hảo. Bữa tối lãng mạn, liệu pháp spa và căn phòng với tầm nhìn tuyệt đẹp đã khiến kỳ nghỉ trở nên khó quên."
               </p>
               <div className="testimonial-author">
                 <div className="author-image" style={{ backgroundColor: '#ddd' }}></div>
                 <div className="author-info">
                   <h4>Michael & Emily Davis</h4>
-                  <p>Couple</p>
+                  <p>Cặp Đôi</p>
                 </div>
               </div>
             </div>
             
             <div className="testimonial-card">
               <p className="testimonial-text">
-                "As someone who travels frequently for work, I've stayed in many hotels, but this one stands out for its exceptional service and attention to detail. It's now my go-to whenever I'm in town."
+                "Là người thường xuyên đi công tác, tôi đã ở nhiều khách sạn, nhưng nơi này nổi bật với dịch vụ xuất sắc và sự chú trọng đến từng chi tiết. Đây giờ là lựa chọn hàng đầu của tôi mỗi khi đến thành phố."
               </p>
               <div className="testimonial-author">
                 <div className="author-image" style={{ backgroundColor: '#ddd' }}></div>
                 <div className="author-info">
                   <h4>Robert Chen</h4>
-                  <p>Frequent Traveler</p>
+                  <p>Khách Hàng Thường Xuyên</p>
                 </div>
               </div>
             </div>

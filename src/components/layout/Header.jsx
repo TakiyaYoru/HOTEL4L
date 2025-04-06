@@ -34,7 +34,7 @@ function Header() {
   return (
     <header className={`header-container ${isHomePage && !scrolled ? 'header-transparent' : 'header-solid'} ${scrolled ? 'scrolled' : ''}`}>
       <nav className="nav">
-        <Link to="/" className="logo">HOTEL4L</Link>
+        <Link to="/" className="logo">HOTEL 4L</Link>
         
         <div className="menu-toggle" onClick={() => setMobileMenuOpen(true)}>
           <FaBars />
@@ -46,30 +46,30 @@ function Header() {
           </div>
           
           <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
-            Home
+            Trang Chủ
           </Link>
           <Link to="/rooms" className={`nav-link ${location.pathname.includes('/rooms') ? 'active' : ''}`}>
-            Rooms
+            Phòng
           </Link>
           <Link to="/services" className={`nav-link ${location.pathname === '/services' ? 'active' : ''}`}>
-            Services
+            Dịch Vụ
           </Link>
           
           {!isAdmin && (
             <>
               <Link to="/favorites" className={`nav-link ${location.pathname === '/favorites' ? 'active' : ''}`}>
-                Favorites
+                Yêu Thích
               </Link> 
               
               <Link to="/my-bookings" className={`nav-link ${location.pathname === '/my-bookings' ? 'active' : ''}`}>
-                My Bookings
+                Đặt Phòng Của Tôi
               </Link>
             </>
           )}
           
           {isAdmin && (
             <Link to="/admin" className={`nav-link ${location.pathname === '/admin' ? 'active' : ''}`}>
-              <FaHotel className="nav-icon" /> Admin Dashboard
+              <FaHotel className="nav-icon" /> Bảng Điều Khiển Quản Trị
             </Link>
           )}
           
@@ -77,36 +77,36 @@ function Header() {
             <div className="user-menu">
               <div className="user-icon" onClick={() => setUserMenuOpen(!userMenuOpen)}>
                 <FaUser />
-                <span className="user-name">{currentUser?.name || 'User'}</span>
+                <span className="user-name">{currentUser?.name || 'Người Dùng'}</span>
               </div>
               
               <div className={`user-dropdown ${userMenuOpen ? 'open' : ''}`}>
                 <Link to="/profile" className="dropdown-item">
-                  <FaUser className="dropdown-icon" /> My Profile
+                  <FaUser className="dropdown-icon" /> Hồ Sơ Của Tôi
                 </Link>
                 
                 {isAdmin ? (
                   <Link to="/admin" className="dropdown-item">
-                    <FaHotel className="dropdown-icon" /> Hotel Management
+                    <FaHotel className="dropdown-icon" /> Quản Lý Khách Sạn
                   </Link>
                 ) : (
                   <Link to="/my-bookings" className="dropdown-item">
-                    <FaBookmark className="dropdown-icon" /> My Bookings
+                    <FaBookmark className="dropdown-icon" /> Đặt Phòng Của Tôi
                   </Link>
                 )}
                 
                 <button className="logout-button" onClick={handleLogout}>
-                  <FaTimes className="dropdown-icon" /> Logout
+                  <FaTimes className="dropdown-icon" /> Đăng Xuất
                 </button>
               </div>
             </div>
           ) : (
             <div className="auth-buttons">
               <Link to="/login" className="auth-button login">
-                Login
+                Đăng Nhập
               </Link>
               <Link to="/register" className="auth-button register">
-                Register
+                Đăng Ký
               </Link>
             </div>
           )}

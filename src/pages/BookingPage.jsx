@@ -78,11 +78,11 @@ function BookingPage() {
       );
       setIsRoomAvailable(response.isAvailable);
       if (!response.isAvailable) {
-        setError('This room is not available for the selected dates. Please choose different dates or another room.');
+        setError('Phòng này không còn trống trong khoảng thời gian bạn chọn. Vui lòng chọn ngày khác hoặc phòng khác.');
       }
     } catch (err) {
-      console.error('Error checking room availability:', err);
-      setError('Error checking room availability');
+      console.error('Lỗi khi kiểm tra tính khả dụng của phòng:', err);
+      setError('Lỗi khi kiểm tra tính khả dụng của phòng');
       setIsRoomAvailable(false);
     }
   };
@@ -113,7 +113,7 @@ function BookingPage() {
         }
       }
     } catch (err) {
-      console.error('Error fetching customer data:', err);
+      console.error('Lỗi khi lấy dữ liệu khách hàng:', err);
     }
   };
 
@@ -158,19 +158,19 @@ function BookingPage() {
   // Validate form
   const validateForm = () => {
     if (!formData.fullName || !formData.email || !formData.phone || !formData.idCard) {
-      setError('Please fill in all required guest information');
+      setError('Vui lòng điền đầy đủ thông tin khách hàng bắt buộc');
       return false;
     }
     if (!services.utils.validation.validateEmail(formData.email)) {
-      setError('Invalid email address');
+      setError('Địa chỉ email không hợp lệ');
       return false;
     }
     if (!services.utils.validation.validatePhone(formData.phone)) {
-      setError('Invalid phone number');
+      setError('Số điện thoại không hợp lệ');
       return false;
     }
     if (!services.utils.validation.validateIdCard(formData.idCard)) {
-      setError('Invalid ID card number');
+      setError('Số CMND/CCCD không hợp lệ');
       return false;
     }
     return true;
@@ -179,25 +179,25 @@ function BookingPage() {
   // Validate phương thức thanh toán
   const validatePaymentMethod = () => {
     if (!formData.paymentMethod) {
-      setError('Please select a payment method');
+      setError('Vui lòng chọn phương thức thanh toán');
       return false;
     }
 
     if (formData.paymentMethod === PAYMENT_METHODS.CREDIT_CARD || formData.paymentMethod === PAYMENT_METHODS.PAYPAL) {
       if (formData.useSavedCard) {
         if (!hasPaymentCard || !paymentCardInfo) {
-          setError('No saved payment card found');
+          setError('Không tìm thấy thẻ thanh toán đã lưu');
           return false;
         }
       } else {
         if (!formData.cardNumber || !formData.cardName || !formData.expiryDate || !formData.cvv) {
-          setError('Please fill in all payment details');
+          setError('Vui lòng điền đầy đủ thông tin thanh toán');
           return false;
         }
       }
     } else if (formData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER) {
       if (!formData.transferConfirmed) {
-        setError('Please confirm the bank transfer');
+        setError('Vui lòng xác nhận đã hoàn tất chuyển khoản ngân hàng');
         return false;
       }
     }
@@ -219,7 +219,7 @@ function BookingPage() {
     e.preventDefault();
   
     if (!isRoomAvailable) {
-      setError('This room is not available for the selected dates. Please choose different dates or another room.');
+      setError('Phòng này không còn trống trong khoảng thời gian bạn chọn. Vui lòng chọn ngày khác hoặc phòng khác.');
       return;
     }
   
@@ -263,7 +263,7 @@ function BookingPage() {
           await services.api.customer.updateCustomer(customerID, updatedCustomerData);
         }
       } catch (error) {
-        console.error('Error updating customer information:', error);
+        console.error('Lỗi khi cập nhật thông tin khách hàng:', error);
       }
   
       // Bước 2: Tạo booking mới
@@ -294,11 +294,11 @@ function BookingPage() {
         customer: customerData || {
           customerID: customerID,
           cName: formData.fullName,
-          gender: formData.gender || "Unknown",
+          gender: formData.gender || "Không xác định",
           email: formData.email || currentUser?.email || "guest@example.com",
           dob: formData.dob ? services.utils.format.formatDateForApi(formData.dob) : "1990-01-01T00:00:00",
           phone: formData.phone || "000-000-0000",
-          address: formData.address || "Unknown",
+          address: formData.address || "Không xác định",
           idCard: formData.idCard || "000000000000",
           point: 0,
         },
@@ -326,14 +326,14 @@ function BookingPage() {
                 paymentMethod: formData.paymentMethod,
                 totalAmount: bookingData.total,
                 bookingID: createdBooking.bookingID,
-                description: `Payment for booking ${createdBooking.bookingID}`,
+                description: `Thanh toán cho đặt phòng ${createdBooking.bookingID}`,
               });
               paymentStatus = PAYMENT_STATUS.COMPLETED;
               bookingStatus = BOOKING_STATUS.CONFIRMED;
               checkInCode = services.utils.generateCheckInCode();
-              console.log(`Payment successful for ${formData.paymentMethod}. Booking status: ${bookingStatus}`);
+              console.log(`Thanh toán thành công bằng ${formData.paymentMethod}. Trạng thái đặt phòng: ${bookingStatus}`);
             } else {
-              console.log(`Payment verification failed for ${formData.paymentMethod}. Booking status remains: ${bookingStatus}`);
+              console.log(`Xác minh thanh toán thất bại bằng ${formData.paymentMethod}. Trạng thái đặt phòng vẫn là: ${bookingStatus}`);
             }
           } else if (formData.cardNumber && formData.cardName && formData.expiryDate && formData.cvv) {
             const verification = await services.api.payment.verifyPayment({
@@ -354,7 +354,7 @@ function BookingPage() {
                     cardHolder: formData.cardName,
                     expiryMonth: month,
                     expiryYear: '20' + year,
-                    bank: 'Unknown',
+                    bank: 'Không xác định',
                   });
                   if (customerData) {
                     await services.api.customer.updateCustomer(customerID, {
@@ -363,7 +363,7 @@ function BookingPage() {
                     });
                   }
                 } catch (error) {
-                  console.error('Error saving payment card:', error);
+                  console.error('Lỗi khi lưu thẻ thanh toán:', error);
                 }
               }
   
@@ -373,20 +373,20 @@ function BookingPage() {
                 paymentMethod: formData.paymentMethod,
                 totalAmount: bookingData.total,
                 bookingID: createdBooking.bookingID,
-                description: `Payment for booking ${createdBooking.bookingID}`,
+                description: `Thanh toán cho đặt phòng ${createdBooking.bookingID}`,
               });
               paymentStatus = PAYMENT_STATUS.COMPLETED;
               bookingStatus = BOOKING_STATUS.CONFIRMED;
               checkInCode = services.utils.generateCheckInCode();
-              console.log(`Payment successful for ${formData.paymentMethod}. Booking status: ${bookingStatus}`);
+              console.log(`Thanh toán thành công bằng ${formData.paymentMethod}. Trạng thái đặt phòng: ${bookingStatus}`);
             } else {
-              console.log(`Payment verification failed for ${formData.paymentMethod}. Booking status remains: ${bookingStatus}`);
+              console.log(`Xác minh thanh toán thất bại bằng ${formData.paymentMethod}. Trạng thái đặt phòng vẫn là: ${bookingStatus}`);
             }
           }
         } catch (error) {
-          console.error('Error processing payment:', error);
+          console.error('Lỗi khi xử lý thanh toán:', error);
           paymentStatus = PAYMENT_STATUS.FAILED;
-          console.log(`Payment failed for ${formData.paymentMethod}. Booking status remains: ${bookingStatus}`);
+          console.log(`Thanh toán thất bại bằng ${formData.paymentMethod}. Trạng thái đặt phòng vẫn là: ${bookingStatus}`);
         }
       } else if (formData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER && formData.transferConfirmed) {
         try {
@@ -396,21 +396,21 @@ function BookingPage() {
             paymentMethod: formData.paymentMethod,
             totalAmount: bookingData.total,
             bookingID: createdBooking.bookingID,
-            description: `Bank transfer for booking ${createdBooking.bookingID}`,
+            description: `Chuyển khoản ngân hàng cho đặt phòng ${createdBooking.bookingID}`,
           });
           paymentStatus = PAYMENT_STATUS.COMPLETED;
           bookingStatus = BOOKING_STATUS.CONFIRMED;
           checkInCode = services.utils.generateCheckInCode();
-          console.log(`Payment successful for ${formData.paymentMethod}. Booking status: ${bookingStatus}`);
+          console.log(`Thanh toán thành công bằng ${formData.paymentMethod}. Trạng thái đặt phòng: ${bookingStatus}`);
         } catch (error) {
-          console.error('Error processing bank transfer:', error);
+          console.error('Lỗi khi xử lý chuyển khoản ngân hàng:', error);
           paymentStatus = PAYMENT_STATUS.FAILED;
-          console.log(`Payment failed for ${formData.paymentMethod}. Booking status remains: ${bookingStatus}`);
+          console.log(`Thanh toán thất bại bằng ${formData.paymentMethod}. Trạng thái đặt phòng vẫn là: ${bookingStatus}`);
         }
       } else if (formData.paymentMethod === PAYMENT_METHODS.CASH) {
         paymentStatus = PAYMENT_STATUS.PENDING;
         bookingStatus = BOOKING_STATUS.PENDING;
-        console.log(`Payment method is ${formData.paymentMethod}. Booking status: ${bookingStatus}`);
+        console.log(`Phương thức thanh toán là ${formData.paymentMethod}. Trạng thái đặt phòng: ${bookingStatus}`);
       }
   
       // Cập nhật booking với paymentID, paymentStatus, bookingStatus và checkInCode
@@ -422,7 +422,7 @@ function BookingPage() {
           bookingStatus: bookingStatus,
           checkInCode: checkInCode,
         });
-        console.log('Updated booking:', updatedBooking);
+        console.log('Đặt phòng đã cập nhật:', updatedBooking);
       }
   
       // Bước 4: Tạo booking detail
@@ -431,7 +431,7 @@ function BookingPage() {
         detailID: detailID,
         checkinDate: new Date(bookingData.checkInDate),
         checkoutDate: new Date(bookingData.checkOutDate),
-        detailStatus: "Booked",
+        detailStatus: "Đã Đặt",
         pricePerDay: bookingData.price,
         totalPrice: bookingData.total,
         bookingID: createdBooking.bookingID,
@@ -475,7 +475,7 @@ function BookingPage() {
   
       await services.api.booking.createBookingDetail(bookingDetailPayload);
   
-      // Bước 5: Cập nhật trạng thái phòng thành BOOKED
+      // Bước 5: Cập nhật trạng thái phòng thành ĐÃ ĐẶT
       try {
         const currentRoomData = await services.api.room.fetchRoomById(bookingData.roomId);
         const updatedRoomData = {
@@ -484,10 +484,10 @@ function BookingPage() {
           rTypeID: currentRoomData.rTypeID,
         };
         await services.api.room.updateRoom(bookingData.roomId, updatedRoomData);
-        console.log(`Room ${bookingData.roomId} status updated to BOOKED`);
+        console.log(`Trạng thái phòng ${bookingData.roomId} đã được cập nhật thành ĐÃ ĐẶT`);
       } catch (error) {
-        console.error('Error updating room status:', error);
-        throw new Error('Failed to update room status');
+        console.error('Lỗi khi cập nhật trạng thái phòng:', error);
+        throw new Error('Không thể cập nhật trạng thái phòng');
       }
   
       // Gửi email xác nhận nếu trạng thái là CONFIRMED
@@ -501,9 +501,9 @@ function BookingPage() {
             checkOutDate: checkOutDate,
             total: bookingData.total,
           });
-          console.log('Confirmation email sent to:', formData.email);
+          console.log('Email xác nhận đã được gửi đến:', formData.email);
         } catch (emailErr) {
-          console.error('Error sending confirmation email:', emailErr);
+          console.error('Lỗi khi gửi email xác nhận:', emailErr);
         }
       }
   
@@ -538,17 +538,17 @@ function BookingPage() {
         timeline: [
           {
             date: services.utils.format.formatDateForApi(new Date()),
-            text: 'Booking created',
+            text: 'Đặt phòng đã được tạo',
             icon: 'FaCalendarAlt',
           },
           {
             date: services.utils.format.formatDateForApi(new Date()),
             text:
               formData.paymentMethod === PAYMENT_METHODS.CASH
-                ? 'Payment pending'
+                ? 'Thanh toán đang chờ'
                 : paymentStatus === PAYMENT_STATUS.COMPLETED
-                ? 'Payment confirmed'
-                : 'Payment failed',
+                ? 'Thanh toán đã xác nhận'
+                : 'Thanh toán thất bại',
             icon: 'FaCreditCard',
           },
         ],
@@ -560,7 +560,7 @@ function BookingPage() {
       setSuccess(true);
       navigate('/checkout', { state: { booking: bookingForCheckout } });
     } catch (err) {
-      console.error('Error creating booking:', err);
+      console.error('Lỗi khi tạo đặt phòng:', err);
       setError(services.utils.api.handleApiError(err));
       setLoading(false);
   
@@ -568,9 +568,9 @@ function BookingPage() {
       if (createdBooking) {
         try {
           await services.api.booking.deleteBooking(createdBooking.bookingID);
-          console.log('Rolled back: Booking deleted due to error');
+          console.log('Hoàn tác: Đặt phòng đã bị xóa do lỗi');
         } catch (rollbackErr) {
-          console.error('Error rolling back booking:', rollbackErr);
+          console.error('Lỗi khi hoàn tác đặt phòng:', rollbackErr);
         }
       }
   
@@ -584,9 +584,9 @@ function BookingPage() {
             rTypeID: currentRoomData.rTypeID,
           };
           await services.api.room.updateRoom(bookingData.roomId, updatedRoomData);
-          console.log(`Rolled back: Room ${bookingData.roomId} status restored to ${originalRoomStatus}`);
+          console.log(`Hoàn tác: Trạng thái phòng ${bookingData.roomId} đã được khôi phục thành ${originalRoomStatus}`);
         } catch (rollbackErr) {
-          console.error('Error rolling back room status:', rollbackErr);
+          console.error('Lỗi khi hoàn tác trạng thái phòng:', rollbackErr);
         }
       }
     }
@@ -624,13 +624,13 @@ function BookingPage() {
       case 1:
         return (
           <div className="form-section">
-            <h2>Guest Information</h2>
+            <h2>Thông Tin Khách Hàng</h2>
             <p className="section-description">
-              Please provide your personal information to proceed with the booking.
+              Vui lòng cung cấp thông tin cá nhân của bạn để tiếp tục đặt phòng.
             </p>
             <div className="form-row">
               <div className="form-group">
-                <label>Full Name *</label>
+                <label>Họ Tên *</label>
                 <input
                   type="text"
                   name="fullName"
@@ -652,7 +652,7 @@ function BookingPage() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Phone Number *</label>
+                <label>Số Điện Thoại *</label>
                 <input
                   type="text"
                   name="phone"
@@ -662,7 +662,7 @@ function BookingPage() {
                 />
               </div>
               <div className="form-group">
-                <label>ID Card Number *</label>
+                <label>Số CMND/CCCD *</label>
                 <input
                   type="text"
                   name="idCard"
@@ -674,7 +674,7 @@ function BookingPage() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Address</label>
+                <label>Địa Chỉ</label>
                 <input
                   type="text"
                   name="address"
@@ -683,7 +683,7 @@ function BookingPage() {
                 />
               </div>
               <div className="form-group">
-                <label>Date of Birth</label>
+                <label>Ngày Sinh</label>
                 <input
                   type="date"
                   name="dob"
@@ -693,20 +693,20 @@ function BookingPage() {
               </div>
             </div>
             <div className="form-group">
-              <label>Gender</label>
+              <label>Giới Tính</label>
               <select name="gender" value={formData.gender} onChange={handleInputChange}>
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
+                <option value="">Chọn Giới Tính</option>
+                <option value="Male">Nam</option>
+                <option value="Female">Nữ</option>
+                <option value="Other">Khác</option>
               </select>
             </div>
             <div className="form-actions">
               <button className="btn-secondary" onClick={() => navigate('/rooms')}>
-                <FaArrowLeft /> Back to Rooms
+                <FaArrowLeft /> Quay Lại Danh Sách Phòng
               </button>
               <button className="btn-primary" onClick={handleNextStep}>
-                Next <FaArrowRight />
+                Tiếp Theo <FaArrowRight />
               </button>
             </div>
           </div>
@@ -714,22 +714,22 @@ function BookingPage() {
       case 2:
         return (
           <div className="form-section">
-            <h2>Companions</h2>
+            <h2>Người Đi Cùng</h2>
             <p className="section-description">
-              Add information about any companions traveling with you (if applicable).
+              Thêm thông tin về những người đi cùng bạn (nếu có).
             </p>
             {formData.companions.length === 0 ? (
               <div className="no-companions-message">
                 <FaUsers className="icon" />
-                <p>No companions added yet.</p>
+                <p>Chưa có người đi cùng nào được thêm.</p>
               </div>
             ) : (
               formData.companions.map((companion, index) => (
                 <div key={index} className="companion-form">
-                  <h3>Companion {index + 1}</h3>
+                  <h3>Người Đi Cùng {index + 1}</h3>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Full Name</label>
+                      <label>Họ Tên</label>
                       <input
                         type="text"
                         name="fullName"
@@ -738,7 +738,7 @@ function BookingPage() {
                       />
                     </div>
                     <div className="form-group">
-                      <label>ID Card Number</label>
+                      <label>Số CMND/CCCD</label>
                       <input
                         type="text"
                         name="idCard"
@@ -749,7 +749,7 @@ function BookingPage() {
                   </div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Date of Birth</label>
+                      <label>Ngày Sinh</label>
                       <input
                         type="date"
                         name="dob"
@@ -758,16 +758,16 @@ function BookingPage() {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Gender</label>
+                      <label>Giới Tính</label>
                       <select
                         name="gender"
                         value={companion.gender}
                         onChange={(e) => handleCompanionChange(index, e)}
                       >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
+                        <option value="">Chọn Giới Tính</option>
+                        <option value="Male">Nam</option>
+                        <option value="Female">Nữ</option>
+                        <option value="Other">Khác</option>
                       </select>
                     </div>
                   </div>
@@ -775,20 +775,20 @@ function BookingPage() {
                     className="btn-secondary"
                     onClick={() => handleRemoveCompanion(index)}
                   >
-                    <FaTrash /> Remove
+                    <FaTrash /> Xóa
                   </button>
                 </div>
               ))
             )}
             <button className="btn-primary" onClick={handleAddCompanion}>
-              <FaPlus /> Add Companion
+              <FaPlus /> Thêm Người Đi Cùng
             </button>
             <div className="form-actions">
               <button className="btn-secondary" onClick={handlePreviousStep}>
-                <FaArrowLeft /> Previous
+                <FaArrowLeft /> Quay Lại
               </button>
               <button className="btn-primary" onClick={handleNextStep}>
-                Next <FaArrowRight />
+                Tiếp Theo <FaArrowRight />
               </button>
             </div>
           </div>
@@ -796,12 +796,12 @@ function BookingPage() {
       case 3:
         return (
           <div className="form-section">
-            <h2>Payment & Confirmation</h2>
+            <h2>Thanh Toán & Xác Nhận</h2>
             <p className="section-description">
-              Select your payment method and add any special requests.
+              Chọn phương thức thanh toán và thêm yêu cầu đặc biệt nếu có.
             </p>
             <div className="form-group">
-              <label>Payment Method *</label>
+              <label>Phương Thức Thanh Toán *</label>
               <div className="payment-methods">
                 <div className="payment-method">
                   <input
@@ -813,7 +813,7 @@ function BookingPage() {
                     onChange={handleInputChange}
                   />
                   <label htmlFor="creditCard">
-                    <FaCreditCard /> Credit Card
+                    <FaCreditCard /> Thẻ Tín Dụng
                   </label>
                 </div>
                 <div className="payment-method">
@@ -839,7 +839,7 @@ function BookingPage() {
                     onChange={handleInputChange}
                   />
                   <label htmlFor="bankTransfer">
-                    <FaDollarSign /> Bank Transfer
+                    <FaDollarSign /> Chuyển Khoản Ngân Hàng
                   </label>
                 </div>
                 <div className="payment-method">
@@ -852,7 +852,7 @@ function BookingPage() {
                     onChange={handleInputChange}
                   />
                   <label htmlFor="cash">
-                    <FaDollarSign /> Cash
+                    <FaDollarSign /> Tiền Mặt
                   </label>
                 </div>
               </div>
@@ -870,7 +870,7 @@ function BookingPage() {
                         checked={formData.useSavedCard}
                         onChange={handleInputChange}
                       />
-                      Use Saved Card (**** **** **** {paymentCardInfo?.pan?.slice(-4)})
+                      Sử Dụng Thẻ Đã Lưu (**** **** **** {paymentCardInfo?.pan?.slice(-4)})
                     </label>
                   </div>
                 )}
@@ -878,7 +878,7 @@ function BookingPage() {
                   <>
                     <div className="form-row">
                       <div className="form-group">
-                        <label>Card Number *</label>
+                        <label>Số Thẻ *</label>
                         <input
                           type="text"
                           name="cardNumber"
@@ -888,7 +888,7 @@ function BookingPage() {
                         />
                       </div>
                       <div className="form-group">
-                        <label>Cardholder Name *</label>
+                        <label>Tên Chủ Thẻ *</label>
                         <input
                           type="text"
                           name="cardName"
@@ -900,7 +900,7 @@ function BookingPage() {
                     </div>
                     <div className="form-row">
                       <div className="form-group">
-                        <label>Expiry Date (MM/YY) *</label>
+                        <label>Ngày Hết Hạn (MM/YY) *</label>
                         <input
                           type="text"
                           name="expiryDate"
@@ -911,7 +911,7 @@ function BookingPage() {
                         />
                       </div>
                       <div className="form-group">
-                        <label>CVV *</label>
+                        <label>Mã CVV *</label>
                         <input
                           type="text"
                           name="cvv"
@@ -929,7 +929,7 @@ function BookingPage() {
                           checked={formData.saveCard}
                           onChange={handleInputChange}
                         />
-                        Save Card for Future Use
+                        Lưu Thẻ Để Sử Dụng Sau
                       </label>
                     </div>
                   </>
@@ -946,19 +946,19 @@ function BookingPage() {
                     checked={formData.transferConfirmed}
                     onChange={handleInputChange}
                   />
-                  I have completed the bank transfer
+                  Tôi đã hoàn tất chuyển khoản ngân hàng
                 </label>
               </div>
             )}
 
             {formData.paymentMethod === PAYMENT_METHODS.CASH && (
               <p className="section-description">
-                You will pay in cash upon arrival at the hotel.
+                Bạn sẽ thanh toán bằng tiền mặt khi đến khách sạn.
               </p>
             )}
 
             <div className="form-group">
-              <label>Special Requests</label>
+              <label>Yêu Cầu Đặc Biệt</label>
               <textarea
                 name="specialRequests"
                 value={formData.specialRequests}
@@ -969,16 +969,16 @@ function BookingPage() {
 
             <div className="form-actions">
               <button className="btn-secondary" onClick={handlePreviousStep}>
-                <FaArrowLeft /> Previous
+                <FaArrowLeft /> Quay Lại
               </button>
-              <button className="btn(primary" onClick={handleSubmit} disabled={loading}>
+              <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
                 {loading ? (
                   <>
-                    <FaSpinner className="loading-spinner" /> Processing...
+                    <FaSpinner className="loading-spinner" /> Đang Xử Lý...
                   </>
                 ) : (
                   <>
-                    Confirm Booking <FaArrowRight />
+                    Xác Nhận Đặt Phòng <FaArrowRight />
                   </>
                 )}
               </button>
@@ -1001,8 +1001,8 @@ function BookingPage() {
   return (
     <div className="booking-page">
       <div className="booking-header">
-        <h1>Book Your Stay</h1>
-        <p>Complete the steps below to confirm your booking.</p>
+        <h1>Đặt Phòng Của Bạn</h1>
+        <p>Hoàn thành các bước dưới đây để xác nhận đặt phòng của bạn.</p>
       </div>
 
       <div className="step-indicators">
@@ -1011,21 +1011,21 @@ function BookingPage() {
           onClick={() => handleStepClick(1)}
         >
           <div className="step-number">1</div>
-          <span className="step-label">Guest Information</span>
+          <span className="step-label">Thông Tin Khách Hàng</span>
         </div>
         <div
           className={`step-indicator ${currentStep >= 2 ? 'active' : ''}`}
           onClick={() => handleStepClick(2)}
         >
           <div className="step-number">2</div>
-          <span className="step-label">Companions</span>
+          <span className="step-label">Người Đi Cùng</span>
         </div>
         <div
           className={`step-indicator ${currentStep >= 3 ? 'active' : ''}`}
           onClick={() => handleStepClick(3)}
         >
           <div className="step-number">3</div>
-          <span className="step-label">Payment</span>
+          <span className="step-label">Thanh Toán</span>
         </div>
       </div>
 
@@ -1036,7 +1036,7 @@ function BookingPage() {
       )}
       {success && (
         <div className="success-message">
-          <FaCheckCircle /> Booking created successfully!
+          <FaCheckCircle /> Đặt phòng thành công!
         </div>
       )}
 
@@ -1045,7 +1045,7 @@ function BookingPage() {
 
         <div className="booking-summary">
           <div className="summary-card">
-            <h2>Booking Summary</h2>
+            <h2>Tóm Tắt Đặt Phòng</h2>
             <div
               className="summary-image"
               style={{
@@ -1057,33 +1057,33 @@ function BookingPage() {
               <div className="summary-item">
                 <FaCalendarAlt className="summary-icon" />
                 <div className="summary-text">
-                  <span className="summary-label">Check-in</span>
-                  <span>{new Date(bookingData.checkInDate).toLocaleDateString()}</span>
+                  <span className="summary-label">Ngày Nhận Phòng</span>
+                  <span>{new Date(bookingData.checkInDate).toLocaleDateString('vi-VN')}</span>
                 </div>
               </div>
               <div className="summary-item">
                 <FaCalendarAlt className="summary-icon" />
                 <div className="summary-text">
-                  <span className="summary-label">Check-out</span>
-                  <span>{new Date(bookingData.checkOutDate).toLocaleDateString()}</span>
+                  <span className="summary-label">Ngày Trả Phòng</span>
+                  <span>{new Date(bookingData.checkOutDate).toLocaleDateString('vi-VN')}</span>
                 </div>
               </div>
               <div className="summary-item">
                 <FaUsers className="summary-icon" />
                 <div className="summary-text">
-                  <span className="summary-label">Guests</span>
+                  <span className="summary-label">Số Khách</span>
                   <span>{bookingData.guests}</span>
                 </div>
               </div>
             </div>
             <div className="summary-pricing">
               <div className="price-item">
-                <span>Price per Night</span>
+                <span>Giá Mỗi Đêm</span>
                 <span>${bookingData.price.toFixed(2)}</span>
               </div>
               {bookingData.extraServices && bookingData.extraServices.length > 0 && (
                 <div className="price-item">
-                  <span>Extra Services</span>
+                  <span>Dịch Vụ Bổ Sung</span>
                   <span>
                     $
                     {bookingData.extraServices
@@ -1093,7 +1093,7 @@ function BookingPage() {
                 </div>
               )}
               <div className="price-total">
-                <span>Total</span>
+                <span>Tổng Cộng</span>
                 <span>${bookingData.total.toFixed(2)}</span>
               </div>
             </div>

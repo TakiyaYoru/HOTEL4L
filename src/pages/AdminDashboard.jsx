@@ -353,10 +353,11 @@ const ErrorMessage = styled.p`
 `;
 
 function AdminDashboard() {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser, isAdmin, isManager } = useAuth();
   const [activeTab, setActiveTab] = useState('rooms');
   const [rooms, setRooms] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -376,34 +377,47 @@ function AdminDashboard() {
     area: ''
   });
   
+  // Form state for employees
+  const [employeeFormData, setEmployeeFormData] = useState({
+    employeeID: '',
+    name: '',
+    email: '',
+    password: '',
+    role: 'Employee'
+  });
+  
   // Edit mode state
   const [editMode, setEditMode] = useState({
     room: false,
-    roomType: false
+    roomType: false,
+    employee: false
   });
   
   // Original ID for editing (to handle ID changes)
   const [originalId, setOriginalId] = useState({
     roomID: '',
-    rTypeID: ''
+    rTypeID: '',
+    employeeID: ''
   });
   
-  // Fetch rooms and room types
+  // Fetch rooms, room types, and employees
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [roomsData, roomTypesData] = await Promise.all([
+        const [roomsData, roomTypesData, employeesData] = await Promise.all([
           services.api.room.fetchRooms(),
-          services.api.room.fetchRoomTypes()
+          services.api.room.fetchRoomTypes(),
+          services.api.employee.fetchEmployees()
         ]);
         
         setRooms(roomsData);
         setRoomTypes(roomTypesData);
+        setEmployees(employeesData);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data. Please try again later.');
+        console.error('Lỗi khi lấy dữ liệu:', err);
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
         setLoading(false);
       }
     };
@@ -411,8 +425,8 @@ function AdminDashboard() {
     fetchData();
   }, []);
   
-  // Nếu người dùng không phải là admin, chuyển hướng về trang chủ
-  if (!isAdmin) {
+  // Nếu người dùng không phải là admin hoặc manager, chuyển hướng về trang chủ
+  if (!isAdmin && !isManager) {
     return <Navigate to="/" />;
   }
   
@@ -426,6 +440,11 @@ function AdminDashboard() {
     setRoomTypeFormData(prev => ({ ...prev, [name]: value }));
   };
   
+  const handleEmployeeInputChange = (e) => {
+    const { name, value } = e.target;
+    setEmployeeFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
   const handleRoomSubmit = async (e) => {
     e.preventDefault();
     
@@ -433,20 +452,16 @@ function AdminDashboard() {
       setLoading(true);
       
       if (editMode.room) {
-        // Cập nhật phòng
         await services.api.room.updateRoom(originalId.roomID, roomFormData);
-        alert('Room updated successfully!');
+        alert('Phòng đã được cập nhật thành công!');
       } else {
-        // Tạo phòng mới
         await services.api.room.createRoom(roomFormData);
-        alert('Room created successfully!');
+        alert('Phòng đã được tạo thành công!');
       }
       
-      // Refresh danh sách phòng
       const roomsData = await services.api.room.fetchRooms();
       setRooms(roomsData);
       
-      // Reset form và edit mode
       setRoomFormData({
         roomID: '',
         roomStatus: 'Available',
@@ -457,8 +472,8 @@ function AdminDashboard() {
       
       setLoading(false);
     } catch (err) {
-      console.error(`Error ${editMode.room ? 'updating' : 'creating'} room:`, err);
-      setError(`Failed to ${editMode.room ? 'update' : 'create'} room. Please try again.`);
+      console.error(`Lỗi khi ${editMode.room ? 'cập nhật' : 'tạo'} phòng:`, err);
+      setError(`Không thể ${editMode.room ? 'cập nhật' : 'tạo'} phòng. Vui lòng thử lại.`);
       setLoading(false);
     }
   };
@@ -470,20 +485,16 @@ function AdminDashboard() {
       setLoading(true);
       
       if (editMode.roomType) {
-        // Cập nhật loại phòng
         await services.api.room.updateRoomType(originalId.rTypeID, roomTypeFormData);
-        alert('Room type updated successfully!');
+        alert('Loại phòng đã được cập nhật thành công!');
       } else {
-        // Tạo loại phòng mới
         await services.api.room.createRoomType(roomTypeFormData);
-        alert('Room type created successfully!');
+        alert('Loại phòng đã được tạo thành công!');
       }
       
-      // Refresh danh sách loại phòng
       const roomTypesData = await services.api.room.fetchRoomTypes();
       setRoomTypes(roomTypesData);
       
-      // Reset form và edit mode
       setRoomTypeFormData({
         rTypeID: '',
         typeName: '',
@@ -496,35 +507,60 @@ function AdminDashboard() {
       
       setLoading(false);
     } catch (err) {
-      console.error(`Error ${editMode.roomType ? 'updating' : 'creating'} room type:`, err);
-      setError(`Failed to ${editMode.roomType ? 'update' : 'create'} room type. Please try again.`);
+      console.error(`Lỗi khi ${editMode.roomType ? 'cập nhật' : 'tạo'} loại phòng:`, err);
+      setError(`Không thể ${editMode.roomType ? 'cập nhật' : 'tạo'} loại phòng. Vui lòng thử lại.`);
+      setLoading(false);
+    }
+  };
+  
+  const handleEmployeeSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      
+      if (editMode.employee) {
+        await services.api.employee.updateEmployee(originalId.employeeID, employeeFormData);
+        alert('Nhân viên đã được cập nhật thành công!');
+      } else {
+        await services.api.employee.createEmployee(employeeFormData);
+        alert('Tài khoản nhân viên đã được tạo thành công!');
+      }
+      
+      const employeesData = await services.api.employee.fetchEmployees();
+      setEmployees(employeesData);
+      
+      setEmployeeFormData({
+        employeeID: '',
+        name: '',
+        email: '',
+        password: '',
+        role: 'Employee'
+      });
+      setEditMode(prev => ({ ...prev, employee: false }));
+      setOriginalId(prev => ({ ...prev, employeeID: '' }));
+      
+      setLoading(false);
+    } catch (err) {
+      console.error(`Lỗi khi ${editMode.employee ? 'cập nhật' : 'tạo'} nhân viên:`, err);
+      setError(`Không thể ${editMode.employee ? 'cập nhật' : 'tạo'} nhân viên. Vui lòng thử lại.`);
       setLoading(false);
     }
   };
   
   const handleEditRoom = (room) => {
-    // Lưu ID gốc để sử dụng khi cập nhật
     setOriginalId(prev => ({ ...prev, roomID: room.roomID }));
-    
-    // Đặt dữ liệu phòng vào form
     setRoomFormData({
       roomID: room.roomID,
       roomStatus: room.roomStatus,
       rTypeID: room.rTypeID
     });
-    
-    // Bật chế độ chỉnh sửa
     setEditMode(prev => ({ ...prev, room: true }));
-    
-    // Cuộn đến form
     document.getElementById('roomForm').scrollIntoView({ behavior: 'smooth' });
   };
   
   const handleEditRoomType = (type) => {
-    // Lưu ID gốc để sử dụng khi cập nhật
     setOriginalId(prev => ({ ...prev, rTypeID: type.rTypeID }));
-    
-    // Đặt dữ liệu loại phòng vào form
     setRoomTypeFormData({
       rTypeID: type.rTypeID,
       typeName: type.typeName,
@@ -532,12 +568,21 @@ function AdminDashboard() {
       maxGuests: type.maxGuests,
       area: type.area
     });
-    
-    // Bật chế độ chỉnh sửa
     setEditMode(prev => ({ ...prev, roomType: true }));
-    
-    // Cuộn đến form
     document.getElementById('roomTypeForm').scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  const handleEditEmployee = (employee) => {
+    setOriginalId(prev => ({ ...prev, employeeID: employee.employeeID }));
+    setEmployeeFormData({
+      employeeID: employee.employeeID,
+      name: employee.name,
+      email: employee.email,
+      password: '',
+      role: employee.role
+    });
+    setEditMode(prev => ({ ...prev, employee: true }));
+    document.getElementById('employeeForm').scrollIntoView({ behavior: 'smooth' });
   };
   
   const handleCancelEdit = (formType) => {
@@ -559,26 +604,48 @@ function AdminDashboard() {
       });
       setEditMode(prev => ({ ...prev, roomType: false }));
       setOriginalId(prev => ({ ...prev, rTypeID: '' }));
+    } else if (formType === 'employee') {
+      setEmployeeFormData({
+        employeeID: '',
+        name: '',
+        email: '',
+        password: '',
+        role: 'Employee'
+      });
+      setEditMode(prev => ({ ...prev, employee: false }));
+      setOriginalId(prev => ({ ...prev, employeeID: '' }));
     }
   };
   
   const handleDeleteRoom = async (roomId) => {
-    if (window.confirm('Are you sure you want to delete this room?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa phòng này không?')) {
       try {
         setLoading(true);
-        
-        // Xóa phòng
         await services.api.room.deleteRoom(roomId);
-        
-        // Refresh danh sách phòng
         const roomsData = await services.api.room.fetchRooms();
         setRooms(roomsData);
-        
         setLoading(false);
-        alert('Room deleted successfully!');
+        alert('Phòng đã được xóa thành công!');
       } catch (err) {
-        console.error('Error deleting room:', err);
-        setError('Failed to delete room. Please try again.');
+        console.error('Lỗi khi xóa phòng:', err);
+        setError('Không thể xóa phòng. Vui lòng thử lại.');
+        setLoading(false);
+      }
+    }
+  };
+  
+  const handleDeleteEmployee = async (employeeId) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này không?')) {
+      try {
+        setLoading(true);
+        await services.api.employee.deleteEmployee(employeeId);
+        const employeesData = await services.api.employee.fetchEmployees();
+        setEmployees(employeesData);
+        setLoading(false);
+        alert('Nhân viên đã được xóa thành công!');
+      } catch (err) {
+        console.error('Lỗi khi xóa nhân viên:', err);
+        setError('Không thể xóa nhân viên. Vui lòng thử lại.');
         setLoading(false);
       }
     }
@@ -586,15 +653,15 @@ function AdminDashboard() {
   
   const getRoomTypeName = (rTypeID) => {
     const roomType = roomTypes.find(type => type.rTypeID === rTypeID);
-    return roomType ? roomType.typeName.replace('_', ' ') : 'Unknown';
+    return roomType ? roomType.typeName.replace('_', ' ') : 'Không xác định';
   };
 
   return (
     <div className="container">
       <DashboardContainer>
         <DashboardHeader>
-          <DashboardTitle>Admin Dashboard</DashboardTitle>
-          <p>Welcome, {currentUser?.name || 'Admin'}!</p>
+          <DashboardTitle>Bảng Điều Khiển Quản Trị</DashboardTitle>
+          <p>Chào mừng, {currentUser?.name || 'Quản trị viên'}!</p>
         </DashboardHeader>
 
         <DashboardContent>
@@ -604,31 +671,31 @@ function AdminDashboard() {
                 $active={activeTab === 'rooms'} 
                 onClick={() => setActiveTab('rooms')}
               >
-                <FaBed /> Manage Rooms
+                <FaBed /> Quản Lý Phòng
               </TabButton>
               <TabButton 
                 $active={activeTab === 'roomTypes'} 
                 onClick={() => setActiveTab('roomTypes')}
               >
-                <FaHotel /> Manage Room Types
+                <FaHotel /> Quản Lý Loại Phòng
               </TabButton>
               <TabButton 
                 $active={activeTab === 'bookings'} 
                 onClick={() => setActiveTab('bookings')}
               >
-                <FaCalendarAlt /> Manage Bookings
+                <FaCalendarAlt /> Quản Lý Đặt Phòng
               </TabButton>
               <TabButton 
                 $active={activeTab === 'users'} 
                 onClick={() => setActiveTab('users')}
               >
-                <FaUsers /> Manage Users
+                <FaUsers /> Quản Lý Người Dùng
               </TabButton>
             </TabButtons>
             
             {activeTab === 'rooms' && (
               <TabContent>
-                <SectionTitle><FaBed /> Room Management</SectionTitle>
+                <SectionTitle><FaBed /> Quản Lý Phòng</SectionTitle>
                 
                 {loading ? (
                   <LoadingSpinner />
@@ -636,17 +703,17 @@ function AdminDashboard() {
                   <ErrorMessage>{error}</ErrorMessage>
                 ) : (
                   <>
-                    <h3>Room List</h3>
+                    <h3>Danh Sách Phòng</h3>
                     <Table>
                       <thead>
                         <tr>
-                          <Th>Room ID</Th>
-                          <Th>Room Type</Th>
-                          <Th>Status</Th>
-                          <Th>Price</Th>
-                          <Th>Max Guests</Th>
-                          <Th>Area (sqft)</Th>
-                          <Th>Actions</Th>
+                          <Th>Mã Phòng</Th>
+                          <Th>Loại Phòng</Th>
+                          <Th>Trạng Thái</Th>
+                          <Th>Giá</Th>
+                          <Th>Số Khách Tối Đa</Th>
+                          <Th>Diện Tích (m²)</Th>
+                          <Th>Hành Động</Th>
                         </tr>
                       </thead>
                       <tbody>
@@ -656,7 +723,9 @@ function AdminDashboard() {
                             <Td>{getRoomTypeName(room.rTypeID)}</Td>
                             <Td>
                               <StatusBadge status={room.roomStatus}>
-                                {room.roomStatus}
+                                {room.roomStatus === 'Available' ? 'Còn Trống' : 
+                                 room.roomStatus === 'Booked' ? 'Đã Đặt' : 
+                                 room.roomStatus === 'Maintaining' ? 'Đang Bảo Trì' : 'Không Xác Định'}
                               </StatusBadge>
                             </Td>
                             <Td>${room.roomType.price}</Td>
@@ -678,23 +747,23 @@ function AdminDashboard() {
                       </tbody>
                     </Table>
                     
-                    <h3>{editMode.room ? 'Edit Room' : 'Add New Room'}</h3>
+                    <h3>{editMode.room ? 'Chỉnh Sửa Phòng' : 'Thêm Phòng Mới'}</h3>
                     <Form id="roomForm" onSubmit={handleRoomSubmit}>
                       <FormGroup>
-                        <Label htmlFor="roomID">Room ID</Label>
+                        <Label htmlFor="roomID">Mã Phòng</Label>
                         <Input 
                           type="text" 
                           id="roomID" 
                           name="roomID" 
                           value={roomFormData.roomID} 
                           onChange={handleRoomInputChange}
-                          placeholder="e.g. 101A"
+                          placeholder="Ví dụ: 101A"
                           required
                         />
                       </FormGroup>
                       
                       <FormGroup>
-                        <Label htmlFor="rTypeID">Room Type</Label>
+                        <Label htmlFor="rTypeID">Loại Phòng</Label>
                         <Select 
                           id="rTypeID" 
                           name="rTypeID" 
@@ -702,7 +771,7 @@ function AdminDashboard() {
                           onChange={handleRoomInputChange}
                           required
                         >
-                          <option value="">Select Room Type</option>
+                          <option value="">Chọn Loại Phòng</option>
                           {roomTypes.map(type => (
                             <option key={type.rTypeID} value={type.rTypeID}>
                               {type.typeName.replace('_', ' ')} (${type.price})
@@ -712,7 +781,7 @@ function AdminDashboard() {
                       </FormGroup>
                       
                       <FormGroup>
-                        <Label htmlFor="roomStatus">Room Status</Label>
+                        <Label htmlFor="roomStatus">Trạng Thái Phòng</Label>
                         <Select 
                           id="roomStatus" 
                           name="roomStatus" 
@@ -720,14 +789,14 @@ function AdminDashboard() {
                           onChange={handleRoomInputChange}
                           required
                         >
-                          <option value="Available">Available</option>
-                          <option value="Booked">Booked</option>
-                          <option value="Maintaining">Maintaining</option>
+                          <option value="Available">Còn Trống</option>
+                          <option value="Booked">Đã Đặt</option>
+                          <option value="Maintaining">Đang Bảo Trì</option>
                         </Select>
                       </FormGroup>
                       
                       <SubmitButton type="submit" disabled={loading}>
-                        {loading ? (editMode.room ? 'Updating...' : 'Adding...') : (editMode.room ? 'Update Room' : 'Add Room')}
+                        {loading ? (editMode.room ? 'Đang Cập Nhật...' : 'Đang Thêm...') : (editMode.room ? 'Cập Nhật Phòng' : 'Thêm Phòng')}
                       </SubmitButton>
                       
                       {editMode.room && (
@@ -739,7 +808,7 @@ function AdminDashboard() {
                             marginTop: '10px'
                           }}
                         >
-                          Cancel Edit
+                          Hủy Chỉnh Sửa
                         </SubmitButton>
                       )}
                     </Form>
@@ -750,24 +819,24 @@ function AdminDashboard() {
             
             {activeTab === 'roomTypes' && (
               <TabContent>
-                <h2>Room Type Management</h2>
+                <h2>Quản Lý Loại Phòng</h2>
                 
                 {loading ? (
-                  <p>Loading...</p>
+                  <p>Đang tải...</p>
                 ) : error ? (
                   <p style={{ color: 'red' }}>{error}</p>
                 ) : (
                   <>
-                    <h3>Room Type List</h3>
+                    <h3>Danh Sách Loại Phòng</h3>
                     <Table>
                       <thead>
                         <tr>
-                          <Th>Type ID</Th>
-                          <Th>Type Name</Th>
-                          <Th>Price</Th>
-                          <Th>Max Guests</Th>
-                          <Th>Area (sqft)</Th>
-                          <Th>Actions</Th>
+                          <Th>Mã Loại Phòng</Th>
+                          <Th>Tên Loại Phòng</Th>
+                          <Th>Giá</Th>
+                          <Th>Số Khách Tối Đa</Th>
+                          <Th>Diện Tích (m²)</Th>
+                          <Th>Hành Động</Th>
                         </tr>
                       </thead>
                       <tbody>
@@ -791,78 +860,78 @@ function AdminDashboard() {
                       </tbody>
                     </Table>
                     
-                    <h3>Add New Room Type</h3>
+                    <h3>Thêm Loại Phòng Mới</h3>
                     <Form id="roomTypeForm" onSubmit={handleRoomTypeSubmit}>
                       <FormGroup>
-                        <Label htmlFor="rTypeID">Type ID</Label>
+                        <Label htmlFor="rTypeID">Mã Loại Phòng</Label>
                         <Input 
                           type="text" 
                           id="rTypeID" 
                           name="rTypeID" 
                           value={roomTypeFormData.rTypeID} 
                           onChange={handleRoomTypeInputChange}
-                          placeholder="e.g. SGL, DBL, KIN"
+                          placeholder="Ví dụ: SGL, DBL, KIN"
                           required
                         />
                       </FormGroup>
                       
                       <FormGroup>
-                        <Label htmlFor="typeName">Type Name</Label>
+                        <Label htmlFor="typeName">Tên Loại Phòng</Label>
                         <Input 
                           type="text" 
                           id="typeName" 
                           name="typeName" 
                           value={roomTypeFormData.typeName} 
                           onChange={handleRoomTypeInputChange}
-                          placeholder="e.g. Single_Room"
+                          placeholder="Ví dụ: Phòng Đơn"
                           required
                         />
                       </FormGroup>
                       
                       <FormGroup>
-                        <Label htmlFor="price">Price</Label>
+                        <Label htmlFor="price">Giá</Label>
                         <Input 
                           type="number" 
                           id="price" 
                           name="price" 
                           value={roomTypeFormData.price} 
                           onChange={handleRoomTypeInputChange}
-                          placeholder="e.g. 100"
+                          placeholder="Ví dụ: 100"
                           min="0"
                           required
                         />
                       </FormGroup>
                       
                       <FormGroup>
-                        <Label htmlFor="maxGuests">Max Guests</Label>
+                        <Label htmlFor="maxGuests">Số Khách Tối Đa</Label>
                         <Input 
                           type="number" 
                           id="maxGuests" 
                           name="maxGuests" 
                           value={roomTypeFormData.maxGuests} 
                           onChange={handleRoomTypeInputChange}
-                          placeholder="e.g. 2"
+                          placeholder="Ví dụ: 2"
                           min="1"
                           required
                         />
                       </FormGroup>
                       
                       <FormGroup>
-                        <Label htmlFor="area">Area (sqft)</Label>
+                        <Label htmlFor="area">Diện Tích (m²)</Label>
                         <Input 
                           type="number" 
                           id="area" 
                           name="area" 
                           value={roomTypeFormData.area} 
                           onChange={handleRoomTypeInputChange}
-                          placeholder="e.g. 300"
+                          placeholder="Ví dụ: 30"
                           min="0"
                           required
                         />
                       </FormGroup>
                       
                       <SubmitButton type="submit" disabled={loading}>
-                        {loading ? 'Adding...' : 'Add Room Type'}
+                        {loading ? 'Đang Thêm...' : 'Thêm Loại Phòng'}
                       </SubmitButton>
                     </Form>
                   </>
@@ -872,15 +941,142 @@ function AdminDashboard() {
             
             {activeTab === 'bookings' && (
               <TabContent>
-                <h2>Booking Management</h2>
-                <p>Manage hotel bookings here.</p>
+                <h2>Quản Lý Đặt Phòng</h2>
+                <p>Quản lý các đặt phòng tại đây.</p>
               </TabContent>
             )}
             
             {activeTab === 'users' && (
               <TabContent>
-                <h2>User Management</h2>
-                <p>Manage users and employees here.</p>
+                <SectionTitle><FaUsers /> Quản Lý Người Dùng</SectionTitle>
+                
+                {loading ? (
+                  <LoadingSpinner />
+                ) : error ? (
+                  <ErrorMessage>{error}</ErrorMessage>
+                ) : (
+                  <>
+                    <h3>Danh Sách Nhân Viên</h3>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <Th>Mã Nhân Viên</Th>
+                          <Th>Tên</Th>
+                          <Th>Email</Th>
+                          <Th>Vai Trò</Th>
+                          <Th>Hành Động</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employees.map(employee => (
+                          <tr key={employee.employeeID}>
+                            <Td>{employee.employeeID}</Td>
+                            <Td>{employee.name}</Td>
+                            <Td>{employee.email}</Td>
+                            <Td>{employee.role === 'Employee' ? 'Nhân Viên' : 'Quản Lý'}</Td>
+                            <Td>
+                              <ActionButton onClick={() => handleEditEmployee(employee)}>
+                                <FaEdit />
+                              </ActionButton>
+                              <ActionButton 
+                                delete 
+                                onClick={() => handleDeleteEmployee(employee.employeeID)}
+                              >
+                                <FaTrash />
+                              </ActionButton>
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                    
+                    <h3>{editMode.employee ? 'Chỉnh Sửa Nhân Viên' : 'Thêm Nhân Viên Mới'}</h3>
+                    <Form id="employeeForm" onSubmit={handleEmployeeSubmit}>
+                      <FormGroup>
+                        <Label htmlFor="employeeID">Mã Nhân Viên</Label>
+                        <Input 
+                          type="text" 
+                          id="employeeID" 
+                          name="employeeID" 
+                          value={employeeFormData.employeeID} 
+                          onChange={handleEmployeeInputChange}
+                          placeholder="Ví dụ: EMP001"
+                          required
+                        />
+                      </FormGroup>
+                      
+                      <FormGroup>
+                        <Label htmlFor="name">Tên</Label>
+                        <Input 
+                          type="text" 
+                          id="name" 
+                          name="name" 
+                          value={employeeFormData.name} 
+                          onChange={handleEmployeeInputChange}
+                          placeholder="Ví dụ: Nguyễn Văn A"
+                          required
+                        />
+                      </FormGroup>
+                      
+                      <FormGroup>
+                        <Label htmlFor="email">Email</Label>
+                        <Input 
+                          type="email" 
+                          id="email" 
+                          name="email" 
+                          value={employeeFormData.email} 
+                          onChange={handleEmployeeInputChange}
+                          placeholder="Ví dụ: nhanvien@khachsan.com"
+                          required
+                        />
+                      </FormGroup>
+                      
+                      <FormGroup>
+                        <Label htmlFor="password">Mật Khẩu {editMode.employee && '(Để trống nếu không thay đổi)'}</Label>
+                        <Input 
+                          type="password" 
+                          id="password" 
+                          name="password" 
+                          value={employeeFormData.password} 
+                          onChange={handleEmployeeInputChange}
+                          placeholder="Nhập mật khẩu"
+                          required={!editMode.employee}
+                        />
+                      </FormGroup>
+                      
+                      <FormGroup>
+                        <Label htmlFor="role">Vai Trò</Label>
+                        <Select 
+                          id="role" 
+                          name="role" 
+                          value={employeeFormData.role} 
+                          onChange={handleEmployeeInputChange}
+                          required
+                        >
+                          <option value="Employee">Nhân Viên</option>
+                          {isAdmin && <option value="Manager">Quản Lý</option>}
+                        </Select>
+                      </FormGroup>
+                      
+                      <SubmitButton type="submit" disabled={loading}>
+                        {loading ? (editMode.employee ? 'Đang Cập Nhật...' : 'Đang Thêm...') : (editMode.employee ? 'Cập Nhật Nhân Viên' : 'Thêm Nhân Viên')}
+                      </SubmitButton>
+                      
+                      {editMode.employee && (
+                        <SubmitButton 
+                          type="button" 
+                          onClick={() => handleCancelEdit('employee')}
+                          style={{ 
+                            backgroundColor: '#6c757d',
+                            marginTop: '10px'
+                          }}
+                        >
+                          Hủy Chỉnh Sửa
+                        </SubmitButton>
+                      )}
+                    </Form>
+                  </>
+                )}
               </TabContent>
             )}
           </TabContainer>

@@ -43,9 +43,9 @@ function LoginPage() {
 
   // Hiển thị gợi ý tài khoản demo
   const demoAccounts = [
-    { username: 'takiya2', password: '111111', role: 'Manager (Admin)' },
-    { username: 'TakiyaYoru99', password: '123456', role: 'Employee' },
-    { username: 'customer1', password: '111111', role: 'Customer' }
+    { username: 'takiya2', password: '111111', role: 'Quản Lý (Admin)' },
+    { username: '222', password: '222', role: 'Nhân Viên' },
+    { username: '111', password: '111', role: 'Khách Hàng' }
   ];
 
   const setDemoAccount = (account) => {
@@ -57,7 +57,7 @@ function LoginPage() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>Đăng nhập</h1>
+          <h1>Đăng Nhập</h1>
           <p>Đăng nhập để truy cập tài khoản của bạn</p>
         </div>
 
@@ -65,7 +65,7 @@ function LoginPage() {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-field">
-            <label>Tên đăng nhập</label>
+            <label>Tên Đăng Nhập</label>
             <input 
               type="text" 
               value={username} 
@@ -76,7 +76,7 @@ function LoginPage() {
           </div>
 
           <div className="form-field">
-            <label>Mật khẩu</label>
+            <label>Mật Khẩu</label>
             <div className="password-input-container">
               <input 
                 type={showPassword ? "text" : "password"}
@@ -96,20 +96,20 @@ function LoginPage() {
           </div>
 
           <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? 'Đang Đăng Nhập...' : 'Đăng Nhập'}
           </button>
         </form>
 
         <div className="auth-link">
-          <Link to="/forgot-password">Quên mật khẩu?</Link>
+          <Link to="/forgot-password">Quên Mật Khẩu?</Link>
         </div>
         <div className="auth-link">
-          Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
+          Chưa có tài khoản? <Link to="/register">Đăng Ký</Link>
         </div>
 
-        {/* Demo accounts */}
+        {/* Tài khoản demo */}
         <div className="demo-accounts">
-          <h4>Tài khoản demo:</h4>
+          <h4>Tài Khoản Demo</h4>
           <div className="demo-account-list">
             {demoAccounts.map((account, index) => (
               <div key={index} className="demo-account-item">
@@ -120,7 +120,7 @@ function LoginPage() {
                   onClick={() => setDemoAccount(account)}
                   className="demo-account-button"
                 >
-                  Sử dụng
+                  Sử Dụng
                 </button>
               </div>
             ))}

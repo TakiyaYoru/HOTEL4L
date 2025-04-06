@@ -130,7 +130,7 @@ const FavoritePage = () => {
   return (
     <div className="container">
       <FavoriteSection>
-        <h2 style={{ fontSize: '2rem', marginBottom: '20px' }}>Your Favorite Rooms</h2>
+        <h2 style={{ fontSize: '2rem', marginBottom: '20px' }}>Phòng Yêu Thích Của Bạn</h2>
         <FavoriteRoomsGrid>
           {favoriteRooms.length > 0 ? (
             favoriteRooms.map((room) => (
@@ -139,23 +139,25 @@ const FavoritePage = () => {
                 <RoomInfo>
                   <RoomName>{room.name}</RoomName>
                   <RoomPrice>
-                    ${room.price}<span>/ night</span>
+                    ${room.price}<span>/ đêm</span>
                   </RoomPrice>
                   <FavoriteToggle onClick={() => handleFavoriteToggle(room)}>
                     <FaHeart color="red" size={24} />
                   </FavoriteToggle>
                   <ViewButton to={`/rooms/${room.id}`}>
-                    View Details
+                    Xem Chi Tiết
                   </ViewButton>
                 </RoomInfo>
               </FavoriteCard>
             ))
           ) : (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 0' }}>
-              <h3 style={{ marginBottom: '15px' }}>No Favorite Rooms Yet</h3>
-              <p style={{ marginBottom: '20px', color: '#777' }}>Browse our rooms and add some to your favorites.</p>
+              <h3 style={{ marginBottom: '15px' }}>Chưa Có Phòng Yêu Thích</h3>
+              <p style={{ marginBottom: '20px', color: '#777' }}>
+                Hãy xem danh sách phòng của chúng tôi và thêm vào danh sách yêu thích của bạn.
+              </p>
               <ViewButton to="/rooms" style={{ display: 'inline-block' }}>
-                Browse Rooms
+                Xem Danh Sách Phòng
               </ViewButton>
             </div>
           )}
